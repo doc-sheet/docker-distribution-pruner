@@ -9,12 +9,12 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/context"
-	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage"
 	"github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/factory"
 	"github.com/docker/libtrust"
+	"github.com/opencontainers/go-digest"
 
 	// Include all storage drivers
 	_ "github.com/docker/distribution/registry/storage/driver/azure"
