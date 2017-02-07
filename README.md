@@ -1,6 +1,10 @@
 ## Docker Distribution Pruner (experimental)
 
+Go to Docker Distribution: https://github.com/docker/distribution/.
+
 Simple Go-lang docker-distribution based application to clean all old revisions from Docker Distribution based registry (also GitLab Container Registry)
+
+**It is only for testing purposes now. Do not yet use that for production data.**
 
 ### Installation
 
