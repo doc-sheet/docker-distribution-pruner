@@ -30,9 +30,12 @@ import (
 )
 
 var configFile = flag.String("config", "config.yml", "Configuration file to use a storage settings from")
-var debug = flag.Bool("debug", true, "Print debug messages")
+var debug = flag.Bool("debug", false, "Print debug messages")
+var verbose = flag.Bool("verbose", true, "Print verbose messages")
+var deleteVersions = flag.Bool("delete-versions", true, "Delete old tag versions")
 var deleteManifests = flag.Bool("delete-manifests", true, "Delete manifests that are unreferenced (repository level)")
-var deleteBlobs = flag.Bool("delete-blobs", false, "Delete blobs that are unreferenced (repository level)")
+var processBlobs = flag.Bool("process-blobs", true, "Try to process blobs")
+var deleteBlobs = flag.Bool("delete-blobs", true, "Delete blobs that are unreferenced (repository level)")
 var deleteGlobalBlobs = flag.Bool("delete-global-blobs", true, "Delete blobs from global storage that are unreferenced")
 
 func resolveConfiguration() (*configuration.Configuration, error) {
@@ -51,7 +54,39 @@ func resolveConfiguration() (*configuration.Configuration, error) {
 	return config, nil
 }
 
+func sweepOldTagVersions(ctx context.Context, repository distribution.Repository, tagsService distribution.TagService, tagName string, linkDigest digest.Digest) (err error) {
+	repoName := repository.Named().Name()
+	tagsService.Versions(ctx, tagName)
+
+	tagsVersionService, err := tagsService.Versions(ctx, tagName)
+	if err != nil {
+		return err
+	}
+
+	tagsVersionsEnumerator, ok := tagsVersionService.(distribution.TagVersionsEnumerator)
+	if !ok {
+		return fmt.Errorf("unable to convert TagVersionsService into TagVersionsEnumerator")
+	}
+
+	err = tagsVersionsEnumerator.Enumerate(ctx, func(dgst digest.Digest) error {
+		if dgst.Hex() == linkDigest.Hex() {
+			logrus.Infoln(repoName, ":", tagName, ": dgst is current link:", dgst)
+			return nil
+		}
+
+		logrus.Infoln(repoName, ":", tagName, ": removing old dgst:", dgst)
+
+		if *deleteVersions {
+			return tagsVersionService.Delete(ctx, dgst)
+		}
+		return nil
+	})
+
+	return err
+}
+
 func markTags(ctx context.Context, repository distribution.Repository) (manifestsSet map[digest.Digest]struct{}, err error) {
+	repoName := repository.Named().Name()
 	manifestsSet = make(map[digest.Digest]struct{})
 	tagsService := repository.Tags(ctx)
 	tags, err := tagsService.All(ctx)
@@ -68,7 +103,6 @@ func markTags(ctx context.Context, repository distribution.Repository) (manifest
 
 	for _, tagName := range tags {
 		descriptor, err := tagsService.Get(ctx, tagName)
-		logrus.Debugln("Mark tag", tagName, ":", descriptor.Digest, "err:", err)
 		if err != nil {
 			// In certain situations such as unfinished uploads, deleting all
 			// tags in S3 or removing the _manifests folder manually, this
@@ -80,7 +114,13 @@ func markTags(ctx context.Context, repository distribution.Repository) (manifest
 			}
 		}
 
+		logrus.Infoln(repoName, ": mark tag", tagName, "with digest", descriptor.Digest, "err:", err)
 		manifestsSet[descriptor.Digest] = struct{}{}
+
+		err = sweepOldTagVersions(ctx, repository, tagsService, tagName, descriptor.Digest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete old tag versions %v: %v", tagName, err)
+		}
 	}
 
 	return manifestsSet, err
@@ -103,11 +143,11 @@ func markManifests(ctx context.Context, repository distribution.Repository, mani
 
 	// swap repo phase
 	err = manifestEnumerator.Enumerate(ctx, func(dgst digest.Digest) error {
-		logrus.Debugln("Mark manifest", repoName, ":")
+		logrus.Infoln(repoName, ": mark manifest", dgst)
 		_, ok := manifestsSet[dgst]
 		if ok {
 			// Mark the manifest's blob
-			logrus.Debugln(repoName, ": marking manifest:", dgst)
+			logrus.Infoln(repoName, ": marking manifest:", dgst)
 			blobSet[dgst] = struct{}{}
 			globalBlobSet[dgst] = struct{}{}
 
@@ -120,7 +160,7 @@ func markManifests(ctx context.Context, repository distribution.Repository, mani
 			for _, descriptor := range descriptors {
 				blobSet[descriptor.Digest] = struct{}{}
 				globalBlobSet[descriptor.Digest] = struct{}{}
-				logrus.Debugln(repoName, ": marking blob:", descriptor.Digest)
+				logrus.Infoln(repoName, ": marking blob:", descriptor.Digest)
 			}
 		} else {
 			manifestsDeleteSet[dgst] = struct{}{}
@@ -161,8 +201,8 @@ func sweepManifests(ctx context.Context, repository distribution.Repository, man
 	}
 
 	for dgst := range manifestsDeleteSet {
-		logrus.Debugln(repoName, ": manifest eligible for deletion:", dgst)
-		if *deleteManifests {
+		logrus.Infoln(repoName, ": manifest eligible for deletion:", dgst)
+		if !*deleteManifests {
 			continue
 		}
 		err = manifestService.Delete(ctx, dgst)
@@ -179,8 +219,8 @@ func sweepBlobs(ctx context.Context, repository distribution.Repository, blobsDe
 	blobsServise := repository.Blobs(ctx)
 
 	for dgst := range blobsDeleteSet {
-		logrus.Debugln(repoName, ": blob eligible for deletion:", dgst)
-		if *deleteBlobs {
+		logrus.Infoln(repoName, ": blob eligible for deletion:", dgst)
+		if !*deleteBlobs {
 			continue
 		}
 		err := blobsServise.Delete(ctx, dgst)
@@ -201,7 +241,7 @@ func processRepository(ctx context.Context, repository distribution.Repository, 
 		return fmt.Errorf("%s: unable to count manifests used by tags: %v", repoName, err)
 	}
 
-	manifestsDeleteSet, _, err := markManifests(ctx, repository, manifestsSet, globalBlobSet)
+	manifestsDeleteSet, blobSet, err := markManifests(ctx, repository, manifestsSet, globalBlobSet)
 	if err != nil {
 		return fmt.Errorf("%s: unable to count blobs used by manifests: %v", repoName, err)
 	}
@@ -211,19 +251,21 @@ func processRepository(ctx context.Context, repository distribution.Repository, 
 		return fmt.Errorf("%s: unable to delete manifests: %v", repoName, err)
 	}
 
-	logrus.Infoln(repoName, ":", len(manifestsSet), "manifests marked,", len(manifestsDeleteSet), "manifests eligible for deletion")
+	logrus.Warningln(repoName, ":", len(manifestsSet), "manifests marked,", len(manifestsDeleteSet), "manifests eligible for deletion")
 
-	//blobDeleteSet, err := markBlobs(ctx, repository, blobSet)
-	//if err != nil {
-	//	logrus.Warningln(fmt.Errorf("%s: unable to list blobs to be deleted: %v", repoName, err))
-	//}
-	//
-	//logrus.Infoln(repoName, ":", len(blobSet), "blobs marked,", len(blobDeleteSet), "blobs eligible for deletion")
-	//
-	//err = sweepBlobs(ctx, repository, blobDeleteSet)
-	//if err != nil {
-	//	return fmt.Errorf("%s: unable to delete blobs: %v", repoName, err)
-	//}
+	if *processBlobs {
+		blobDeleteSet, err := markBlobs(ctx, repository, blobSet)
+		if err != nil {
+			return fmt.Errorf("%s: unable to list blobs to be deleted: %v", repoName, err)
+		}
+
+		logrus.Warningln(repoName, ":", len(blobSet), "blobs marked,", len(blobDeleteSet), "blobs eligible for deletion")
+
+		err = sweepBlobs(ctx, repository, blobDeleteSet)
+		if err != nil {
+			return fmt.Errorf("%s: unable to delete blobs: %v", repoName, err)
+		}
+	}
 	return nil
 }
 
@@ -242,13 +284,13 @@ func sweepGlobalBlobs(ctx context.Context, storageDriver driver.StorageDriver, r
 		return fmt.Errorf("error enumerating blobs: %v", err)
 	}
 
-	logrus.Infoln(len(markSet), "blobs marked,", len(deleteSet), "blobs eligible for deletion")
+	logrus.Warningln(len(markSet), "blobs marked,", len(deleteSet), "blobs eligible for deletion")
 
 	// Construct vacuum
 	vacuum := storage.NewVacuum(ctx, storageDriver)
 	for dgst := range deleteSet {
-		logrus.Debugln("blob eligible for deletion: %s", dgst)
-		if *deleteGlobalBlobs {
+		logrus.Infoln("blob eligible for deletion:", dgst)
+		if !*deleteGlobalBlobs {
 			continue
 		}
 		err := vacuum.RemoveBlob(string(dgst))
@@ -269,7 +311,7 @@ func processRegistry(ctx context.Context, storageDriver driver.StorageDriver, re
 	}
 
 	err := repositoryEnumerator.Enumerate(ctx, func(repoName string) error {
-		logrus.Debugln(repoName)
+		logrus.Infoln(repoName, ": starting processing...")
 
 		var err error
 		named, err := reference.WithName(repoName)
@@ -301,6 +343,10 @@ func main() {
 
 	if *debug {
 		logrus.SetLevel(logrus.DebugLevel)
+	} else if *verbose {
+		logrus.SetLevel(logrus.InfoLevel)
+	} else {
+		logrus.SetLevel(logrus.WarnLevel)
 	}
 
 	config, err := resolveConfiguration()
@@ -325,7 +371,7 @@ func main() {
 		logrus.Fatalln(err)
 	}
 
-	registry, err := storage.NewRegistry(ctx, driver, storage.Schema1SigningKey(k))
+	registry, err := storage.NewRegistry(ctx, driver, storage.Schema1SigningKey(k), storage.EnableDelete)
 	if err != nil {
 		logrus.Fatalln("failed to construct registry:", err)
 	}
