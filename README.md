@@ -1,4 +1,4 @@
-## Docker Distribution Pruner (experimental)
+## Docker Distribution Pruner (highly experimental)
 
 Go to Docker Distribution: https://github.com/docker/distribution/.
 
@@ -19,13 +19,15 @@ docker-distribution-pruner -config /path/to/docker/distribution/config/file
 
 Reclaim disk space:
 ```bash
-docker-distribution-pruner -config /path/to/docker/distribution/config/file -delete-manifests=true -delete-blobs=true -delete-global-blobs=true
+docker-distribution-pruner -config /path/to/docker/distribution/config/file -dry-run=false
 ```
 
 ### Options
 
-All options are off by default:
+It is highly not advised to change these options as it can leave left-overs in repository.
+
 ```
+-delete-versions=true - delete unreferenced versions for each found tag of the repository repository
 -delete-manifests=true - delete unreferenced manifests for each found repository, this unlinks all previous revisions of tags
 -delete-blobs=true - delete unreferenced blobs for each found repository, this unlinks all blobs referenced in context of this repository
 -delete-global-blobs=true - physically delete manifests and blobs that are no longer used, physically removes data
