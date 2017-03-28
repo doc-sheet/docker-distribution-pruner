@@ -3,6 +3,13 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "3qZFrzsU8XHR91rDXIEzAKWPGZQ=",
+			"origin": "github.com/docker/distribution/vendor/github.com/Azure/azure-sdk-for-go/storage",
+			"path": "github.com/Azure/azure-sdk-for-go/storage",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
 			"checksumSHA1": "vwpCebe1/Uw4IVvhoCEzrsBoA+E=",
 			"path": "github.com/Sirupsen/logrus",
 			"revision": "418b41d23a1bf978c06faea5313ba194650ac088",
@@ -170,6 +177,13 @@
 			"revisionTime": "2017-03-21T17:14:25Z"
 		},
 		{
+			"checksumSHA1": "vEnuppCdK7GJlyekcV8T2Wsh9Gg=",
+			"origin": "github.com/docker/distribution/vendor/github.com/aws/aws-sdk-go/service/cloudfront/sign",
+			"path": "github.com/aws/aws-sdk-go/service/cloudfront/sign",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
 			"checksumSHA1": "yeut1ZgvmDnjhSDTen7oKOtrfos=",
 			"origin": "github.com/docker/distribution/vendor/github.com/aws/aws-sdk-go/service/s3",
 			"path": "github.com/aws/aws-sdk-go/service/s3",
@@ -180,6 +194,27 @@
 			"checksumSHA1": "mTYnOiyBDqdeG6pBQi8FRbHO7Qg=",
 			"origin": "github.com/docker/distribution/vendor/github.com/aws/aws-sdk-go/service/sts",
 			"path": "github.com/aws/aws-sdk-go/service/sts",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
+			"checksumSHA1": "cIyisq5XrjFxF377qEMk5MIODQ4=",
+			"origin": "github.com/docker/distribution/vendor/github.com/denverdino/aliyungo/common",
+			"path": "github.com/denverdino/aliyungo/common",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
+			"checksumSHA1": "ZR5lYEUmb9kr3hyY9EJQz15ufg8=",
+			"origin": "github.com/docker/distribution/vendor/github.com/denverdino/aliyungo/oss",
+			"path": "github.com/denverdino/aliyungo/oss",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
+			"checksumSHA1": "Lp0KtT7ycgq31ox3Uzhpxyw0U+Y=",
+			"origin": "github.com/docker/distribution/vendor/github.com/denverdino/aliyungo/util",
+			"path": "github.com/denverdino/aliyungo/util",
 			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
 			"revisionTime": "2017-03-21T17:14:25Z"
 		},
@@ -262,6 +297,12 @@
 			"revisionTime": "2017-03-21T17:14:25Z"
 		},
 		{
+			"checksumSHA1": "cs420LjgnTLK7cLWwZdQNzCHoJs=",
+			"path": "github.com/docker/distribution/registry/storage/driver/azure",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
 			"checksumSHA1": "9Wguozd+b7niwxI1chq0ld2jB+Q=",
 			"path": "github.com/docker/distribution/registry/storage/driver/base",
 			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
@@ -292,6 +333,30 @@
 			"revisionTime": "2017-03-21T17:14:25Z"
 		},
 		{
+			"checksumSHA1": "C9ZX3wcL9oDsA+HYaiJPMmo+z4I=",
+			"path": "github.com/docker/distribution/registry/storage/driver/middleware",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
+			"checksumSHA1": "0NL3esNOQjGMLlCO2K6MbHbtdRg=",
+			"path": "github.com/docker/distribution/registry/storage/driver/middleware/cloudfront",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
+			"checksumSHA1": "A5uoBCplfGUiL2NxR2pcGYorcgw=",
+			"path": "github.com/docker/distribution/registry/storage/driver/middleware/redirect",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
+			"checksumSHA1": "KodwnG/uU+IkIHVMYwsC7mh3oSo=",
+			"path": "github.com/docker/distribution/registry/storage/driver/oss",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
 			"checksumSHA1": "+v/5kqi1SwJC6aJ2iHrpXb+Pb3o=",
 			"path": "github.com/docker/distribution/registry/storage/driver/s3-aws",
 			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
@@ -304,8 +369,20 @@
 			"revisionTime": "2017-03-21T17:14:25Z"
 		},
 		{
+			"checksumSHA1": "CFg+B1Wx7osTBrXWgOSfC9livy8=",
+			"path": "github.com/docker/distribution/registry/storage/driver/swift",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
 			"checksumSHA1": "cNp7rNReJHvdSfrIetXS9RGsLSo=",
 			"path": "github.com/docker/distribution/uuid",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
+			"checksumSHA1": "ggcT/d9NL9z2imRxsaEwp6D2eOE=",
+			"path": "github.com/docker/distribution/version",
 			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
 			"revisionTime": "2017-03-21T17:14:25Z"
 		},
@@ -361,6 +438,20 @@
 			"checksumSHA1": "q1lrlObp9XHB3aAkOgEljyLFAXY=",
 			"origin": "github.com/docker/distribution/vendor/github.com/jmespath/go-jmespath",
 			"path": "github.com/jmespath/go-jmespath",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
+			"checksumSHA1": "95DyET1x0ViWzZEtKWfz3kU8uNo=",
+			"origin": "github.com/docker/distribution/vendor/github.com/mitchellh/mapstructure",
+			"path": "github.com/mitchellh/mapstructure",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
+			"checksumSHA1": "wPBI6jb8Oz+pn8ErYjSapejOQkY=",
+			"origin": "github.com/docker/distribution/vendor/github.com/ncw/swift",
+			"path": "github.com/ncw/swift",
 			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
 			"revisionTime": "2017-03-21T17:14:25Z"
 		},
