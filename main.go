@@ -437,7 +437,7 @@ func main() {
 
 	if *cache {
 		cacheProvider := memorycache.NewInMemoryBlobDescriptorCacheProvider()
-		options := append(options, storage.BlobDescriptorCacheProvider(cacheProvider))
+		options = append(options, storage.BlobDescriptorCacheProvider(cacheProvider))
 	}
 
 	registry, err := storage.NewRegistry(ctx, driver, options...)
