@@ -275,6 +275,8 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 // may be context sensitive in the future. The instance should be used similar
 // to a request local.
 func (repo *repository) Blobs(ctx context.Context) distribution.BlobStore {
+	blobDirectoryPathSpec := layerLinkIndexPathSpec{name: repo.name.Name()}
+
 	var statter distribution.BlobDescriptorService = &linkedBlobStatter{
 		blobStore:   repo.blobStore,
 		repository:  repo,
@@ -300,6 +302,7 @@ func (repo *repository) Blobs(ctx context.Context) distribution.BlobStore {
 		// TODO(stevvooe): linkPath limits this blob store to only layers.
 		// This instance cannot be used for manifest checks.
 		linkPathFns:            []linkPathFunc{blobLinkPath},
+		linkDirectoryPathSpec:  blobDirectoryPathSpec,
 		deleteEnabled:          repo.registry.deleteEnabled,
 		resumableDigestEnabled: repo.resumableDigestEnabled,
 	}

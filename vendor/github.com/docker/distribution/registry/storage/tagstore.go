@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
+	"github.com/docker/distribution/registry/storage/cache"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/opencontainers/go-digest"
 )
@@ -188,4 +189,99 @@ func (ts *tagStore) Lookup(ctx context.Context, desc distribution.Descriptor) ([
 	}
 
 	return tags, nil
+}
+
+type tagVersionStore struct {
+	ts  *tagStore
+	lbs *linkedBlobStore
+	tag string
+}
+
+func (ts *tagStore) Versions(ctx context.Context, tag string) (distribution.TagVersionsService, error) {
+	manifestTagIndexEntryLinkFn := func(name string, dgst digest.Digest) (string, error) {
+		return pathFor(manifestTagIndexEntryLinkPathSpec{
+			name:     name,
+			tag:      tag,
+			revision: dgst,
+		})
+	}
+
+	manifestTagIndexEntryLinkFns := []linkPathFunc{
+		manifestTagIndexEntryLinkFn,
+	}
+
+	var statter distribution.BlobDescriptorService = &linkedBlobStatter{
+		blobStore:   ts.blobStore,
+		repository:  ts.repository,
+		linkPathFns: manifestTagIndexEntryLinkFns,
+	}
+
+	if ts.repository.descriptorCache != nil {
+		statter = cache.NewCachedBlobStatter(ts.repository.descriptorCache, statter)
+	}
+
+	if ts.repository.registry.blobDescriptorServiceFactory != nil {
+		statter = ts.repository.registry.blobDescriptorServiceFactory.BlobAccessController(statter)
+	}
+
+	lbs := &linkedBlobStore{
+		blobStore:            ts.blobStore,
+		blobAccessController: statter,
+		repository:           ts.repository,
+		ctx:                  ctx,
+		deleteEnabled:        ts.repository.deleteEnabled,
+		linkPathFns:          manifestTagIndexEntryLinkFns,
+		linkDirectoryPathSpec: manifestTagIndexPathSpec{
+			name: ts.repository.Named().Name(),
+			tag:  tag,
+		},
+	}
+
+	tvs := &tagVersionStore{
+		ts:  ts,
+		tag: tag,
+		lbs: lbs,
+	}
+
+	return tvs, nil
+}
+
+func (tvs *tagVersionStore) Get(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
+	currentPath, err := pathFor(manifestTagIndexEntryPathSpec{
+		name:     tvs.ts.repository.Named().Name(),
+		tag:      tvs.tag,
+		revision: dgst,
+	})
+
+	if err != nil {
+		return distribution.Descriptor{}, err
+	}
+
+	revision, err := tvs.ts.blobStore.readlink(ctx, currentPath)
+	if err != nil {
+		switch err.(type) {
+		case storagedriver.PathNotFoundError:
+			return distribution.Descriptor{}, distribution.ErrTagVersionUnknown{Tag: tvs.tag, Version: dgst}
+		}
+
+		return distribution.Descriptor{}, err
+	}
+
+	return distribution.Descriptor{Digest: revision}, nil
+}
+
+func (tvs *tagVersionStore) Delete(ctx context.Context, dgst digest.Digest) error {
+	context.GetLogger(ctx).Debug("(*tagVersionStore).Delete")
+	return tvs.lbs.Delete(ctx, dgst)
+}
+
+func (tvs *tagVersionStore) Enumerate(ctx context.Context, ingester func(digest.Digest) error) error {
+	err := tvs.lbs.Enumerate(ctx, func(dgst digest.Digest) error {
+		err := ingester(dgst)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
 }

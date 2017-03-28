@@ -86,6 +86,8 @@ const (
 //
 // 	Blobs:
 //
+// 	layerLinkIndexPathSpec:       <root>/v2/repositories/<name>/_layers/
+// 	layerLinkEntryPathSpec:       <root>/v2/repositories/<name>/_layers/<algorithm>/<hex digest>/
 // 	layerLinkPathSpec:            <root>/v2/repositories/<name>/_layers/<algorithm>/<hex digest>/link
 //
 //	Uploads:
@@ -205,6 +207,22 @@ func pathFor(spec pathSpec) (string, error) {
 		}
 
 		return path.Join(root, path.Join(components...)), nil
+	case layerLinkIndexPathSpec:
+		return path.Join(append(repoPrefix, v.name, "_layers")...), nil
+	case layerLinkEntryPathSpec:
+		components, err := digestPathComponents(v.digest, false)
+		if err != nil {
+			return "", err
+		}
+
+		// TODO(stevvooe): Right now, all blobs are linked under "_layers". If
+		// we have future migrations, we may want to rename this to "_blobs".
+		// A migration strategy would simply leave existing items in place and
+		// write the new paths, commit a file then delete the old files.
+
+		blobLinkPathComponents := append(repoPrefix, v.name, "_layers")
+
+		return path.Join(append(blobLinkPathComponents, components...)...), nil
 	case layerLinkPathSpec:
 		components, err := digestPathComponents(v.digest, false)
 		if err != nil {
@@ -348,6 +366,14 @@ type manifestTagIndexEntryLinkPathSpec struct {
 
 func (manifestTagIndexEntryLinkPathSpec) pathSpec() {}
 
+// manifestRevisionsPathSpec describes the directory path for
+// a manifest revision.
+type layerLinkIndexPathSpec struct {
+	name string
+}
+
+func (layerLinkIndexPathSpec) pathSpec() {}
+
 // blobLinkPathSpec specifies a path for a blob link, which is a file with a
 // blob id. The blob link will contain a content addressable blob id reference
 // into the blob store. The format of the contents is as follows:
@@ -366,6 +392,13 @@ type layerLinkPathSpec struct {
 }
 
 func (layerLinkPathSpec) pathSpec() {}
+
+type layerLinkEntryPathSpec struct {
+	name   string
+	digest digest.Digest
+}
+
+func (layerLinkEntryPathSpec) pathSpec() {}
 
 // blobAlgorithmReplacer does some very simple path sanitization for user
 // input. Paths should be "safe" before getting this far due to strict digest

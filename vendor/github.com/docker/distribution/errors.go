@@ -29,6 +29,16 @@ func (err ErrTagUnknown) Error() string {
 	return fmt.Sprintf("unknown tag=%s", err.Tag)
 }
 
+// ErrTagUnknown is returned if the given tag is not known by the tag service
+type ErrTagVersionUnknown struct {
+	Tag string
+	Version digest.Digest
+}
+
+func (err ErrTagVersionUnknown) Error() string {
+	return fmt.Sprintf("unknown tag=%s version=%v", err.Tag, err.Version)
+}
+
 // ErrRepositoryUnknown is returned if the named repository is not known by
 // the registry.
 type ErrRepositoryUnknown struct {
