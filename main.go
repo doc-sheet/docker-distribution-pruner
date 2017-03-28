@@ -17,22 +17,23 @@ import (
 	"github.com/opencontainers/go-digest"
 
 	// Include all storage drivers
-	_ "github.com/docker/distribution/registry/storage/driver/azure"
+	//_ "github.com/docker/distribution/registry/storage/driver/azure"
 	_ "github.com/docker/distribution/registry/storage/driver/filesystem"
-	_ "github.com/docker/distribution/registry/storage/driver/gcs"
-	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
-	_ "github.com/docker/distribution/registry/storage/driver/middleware/cloudfront"
-	_ "github.com/docker/distribution/registry/storage/driver/middleware/redirect"
-	_ "github.com/docker/distribution/registry/storage/driver/oss"
-	_ "github.com/docker/distribution/registry/storage/driver/s3-aws"
-	_ "github.com/docker/distribution/registry/storage/driver/s3-goamz"
-	_ "github.com/docker/distribution/registry/storage/driver/swift"
+	//_ "github.com/docker/distribution/registry/storage/driver/gcs"
+	//_ "github.com/docker/distribution/registry/storage/driver/inmemory"
+	//_ "github.com/docker/distribution/registry/storage/driver/middleware/cloudfront"
+	//_ "github.com/docker/distribution/registry/storage/driver/middleware/redirect"
+	//_ "github.com/docker/distribution/registry/storage/driver/oss"
+	//_ "github.com/docker/distribution/registry/storage/driver/s3-aws"
+	//_ "github.com/docker/distribution/registry/storage/driver/s3-goamz"
+	//_ "github.com/docker/distribution/registry/storage/driver/swift"
 )
 
-var configFile = flag.String("config", "", "Configuration file to use a storage settings from")
-var deleteManifests = flag.Bool("delete-manifests", false, "Delete manifests that are unreferenced (repository level)")
+var configFile = flag.String("config", "config.yml", "Configuration file to use a storage settings from")
+var debug = flag.Bool("debug", true, "Print debug messages")
+var deleteManifests = flag.Bool("delete-manifests", true, "Delete manifests that are unreferenced (repository level)")
 var deleteBlobs = flag.Bool("delete-blobs", false, "Delete blobs that are unreferenced (repository level)")
-var deleteGlobalBlobs = flag.Bool("delete-global-blobs", false, "Delete blobs from global storage that are unreferenced")
+var deleteGlobalBlobs = flag.Bool("delete-global-blobs", true, "Delete blobs from global storage that are unreferenced")
 
 func resolveConfiguration() (*configuration.Configuration, error) {
 	fp, err := os.Open(*configFile)
@@ -67,6 +68,7 @@ func markTags(ctx context.Context, repository distribution.Repository) (manifest
 
 	for _, tagName := range tags {
 		descriptor, err := tagsService.Get(ctx, tagName)
+		logrus.Debugln("Mark tag", tagName, ":", descriptor.Digest, "err:", err)
 		if err != nil {
 			// In certain situations such as unfinished uploads, deleting all
 			// tags in S3 or removing the _manifests folder manually, this
@@ -81,7 +83,7 @@ func markTags(ctx context.Context, repository distribution.Repository) (manifest
 		manifestsSet[descriptor.Digest] = struct{}{}
 	}
 
-	return nil, err
+	return manifestsSet, err
 }
 
 func markManifests(ctx context.Context, repository distribution.Repository, manifestsSet, globalBlobSet map[digest.Digest]struct{}) (manifestsDeleteSet, blobSet map[digest.Digest]struct{}, err error) {
@@ -101,6 +103,7 @@ func markManifests(ctx context.Context, repository distribution.Repository, mani
 
 	// swap repo phase
 	err = manifestEnumerator.Enumerate(ctx, func(dgst digest.Digest) error {
+		logrus.Debugln("Mark manifest", repoName, ":")
 		_, ok := manifestsSet[dgst]
 		if ok {
 			// Mark the manifest's blob
@@ -198,28 +201,29 @@ func processRepository(ctx context.Context, repository distribution.Repository, 
 		return fmt.Errorf("%s: unable to count manifests used by tags: %v", repoName, err)
 	}
 
-	manifestsDeleteSet, blobSet, err := markManifests(ctx, repository, manifestsSet, globalBlobSet)
+	manifestsDeleteSet, _, err := markManifests(ctx, repository, manifestsSet, globalBlobSet)
 	if err != nil {
 		return fmt.Errorf("%s: unable to count blobs used by manifests: %v", repoName, err)
 	}
-
-	blobDeleteSet, err := markBlobs(ctx, repository, blobSet)
-	if err != nil {
-		return fmt.Errorf("%s: unable to list blobs to be deleted: %v", repoName, err)
-	}
-
-	logrus.Infoln(repoName, ":", len(manifestsSet), "manifests marked,", len(manifestsDeleteSet), "manifests eligible for deletion")
-	logrus.Infoln(repoName, ":", len(blobSet), "blobs marked,", len(blobDeleteSet), "blobs eligible for deletion")
 
 	err = sweepManifests(ctx, repository, manifestsDeleteSet)
 	if err != nil {
 		return fmt.Errorf("%s: unable to delete manifests: %v", repoName, err)
 	}
 
-	err = sweepBlobs(ctx, repository, blobDeleteSet)
-	if err != nil {
-		return fmt.Errorf("%s: unable to delete blobs: %v", repoName, err)
-	}
+	logrus.Infoln(repoName, ":", len(manifestsSet), "manifests marked,", len(manifestsDeleteSet), "manifests eligible for deletion")
+
+	//blobDeleteSet, err := markBlobs(ctx, repository, blobSet)
+	//if err != nil {
+	//	logrus.Warningln(fmt.Errorf("%s: unable to list blobs to be deleted: %v", repoName, err))
+	//}
+	//
+	//logrus.Infoln(repoName, ":", len(blobSet), "blobs marked,", len(blobDeleteSet), "blobs eligible for deletion")
+	//
+	//err = sweepBlobs(ctx, repository, blobDeleteSet)
+	//if err != nil {
+	//	return fmt.Errorf("%s: unable to delete blobs: %v", repoName, err)
+	//}
 	return nil
 }
 
@@ -268,7 +272,7 @@ func processRegistry(ctx context.Context, storageDriver driver.StorageDriver, re
 		logrus.Debugln(repoName)
 
 		var err error
-		named, err := reference.ParseNamed(repoName)
+		named, err := reference.WithName(repoName)
 		if err != nil {
 			return fmt.Errorf("failed to parse repo name %s: %v", repoName, err)
 		}
@@ -294,6 +298,10 @@ func processRegistry(ctx context.Context, storageDriver driver.StorageDriver, re
 
 func main() {
 	flag.Parse()
+
+	if *debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
 
 	config, err := resolveConfiguration()
 	if err != nil {
