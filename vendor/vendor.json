@@ -291,6 +291,12 @@
 			"revisionTime": "2017-03-21T17:14:25Z"
 		},
 		{
+			"checksumSHA1": "Ckk6FOW4ZCVZ30Y+Cmlv9k8t9OU=",
+			"path": "github.com/docker/distribution/registry/storage/cache/memory",
+			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",
+			"revisionTime": "2017-03-21T17:14:25Z"
+		},
+		{
 			"checksumSHA1": "Dc16t4/iBa9VVcEzFDK69rf2now=",
 			"path": "github.com/docker/distribution/registry/storage/driver",
 			"revision": "0700fa570d7bcc1b3e46ee127c4489fd25f4daa3",

@@ -16,6 +16,8 @@ import (
 	"github.com/docker/libtrust"
 	"github.com/opencontainers/go-digest"
 
+	memorycache "github.com/docker/distribution/registry/storage/cache/memory"
+
 	// Include all storage drivers
 	_ "github.com/docker/distribution/registry/storage/driver/azure"
 	_ "github.com/docker/distribution/registry/storage/driver/filesystem"
@@ -38,6 +40,7 @@ var (
 	deleteManifests   = flag.Bool("delete-manifests", true, "Delete manifests that are unreferenced (repository level)")
 	deleteBlobs       = flag.Bool("delete-blobs", true, "Delete blobs that are unreferenced (repository level)")
 	deleteGlobalBlobs = flag.Bool("delete-global-blobs", true, "Delete blobs from global storage that are unreferenced")
+	cache             = flag.Bool("cache", true, "Use in-memory cache")
 )
 
 var (
@@ -430,6 +433,11 @@ func main() {
 
 	if !*dryRun {
 		options = append(options, storage.EnableDelete)
+	}
+
+	if *cache {
+		cacheProvider := memorycache.NewInMemoryBlobDescriptorCacheProvider()
+		options := append(options, storage.BlobDescriptorCacheProvider(cacheProvider))
 	}
 
 	registry, err := storage.NewRegistry(ctx, driver, options...)
