@@ -123,7 +123,6 @@ func markManifests(ctx context.Context, repository distribution.Repository, mani
 
 	// swap repo phase
 	err = manifestEnumerator.Enumerate(ctx, func(dgst digest.Digest) error {
-		logrus.Infoln(repoName, ": mark manifest", dgst)
 		_, ok := manifestsSet[dgst]
 		if ok {
 			// Mark the manifest's blob
