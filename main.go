@@ -71,6 +71,10 @@ func markTags(ctx context.Context, repository distribution.Repository) (tagsSet 
 	tagsService := repository.Tags(ctx)
 	tags, err := tagsService.All(ctx)
 	if err != nil {
+		if _, ok := err.(distribution.ErrRepositoryUnknown); ok {
+			return tagsSet, manifestsSet, nil
+		}
+
 		// In certain situations such as unfinished uploads, deleting all
 		// tags in S3 or removing the _manifests folder manually, this
 		// error may be of type PathNotFound.
@@ -145,6 +149,10 @@ func markManifests(ctx context.Context, repository distribution.Repository, mani
 		return nil
 	})
 
+	if _, ok := err.(driver.PathNotFoundError); ok {
+		err = nil
+	}
+
 	return manifestsDeleteSet, blobSet, err
 }
 
@@ -164,6 +172,10 @@ func markBlobs(ctx context.Context, repository distribution.Repository, blobSet 
 		}
 		return nil
 	})
+
+	if _, ok := err.(driver.PathNotFoundError); ok {
+		err = nil
+	}
 
 	return blobDeleteSet, err
 }
@@ -413,8 +425,15 @@ func main() {
 		logrus.Fatalln(err)
 	}
 
-	registry, err := storage.NewRegistry(ctx, driver, storage.Schema1SigningKey(k),
-		storage.EnableDelete)
+	options := []storage.RegistryOption{
+		storage.Schema1SigningKey(k),
+	}
+
+	if !*dryRun {
+		options = append(options, storage.EnableDelete)
+	}
+
+	registry, err := storage.NewRegistry(ctx, driver, options...)
 	if err != nil {
 		logrus.Fatalln("failed to construct registry:", err)
 	}
