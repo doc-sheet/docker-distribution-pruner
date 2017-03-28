@@ -2,6 +2,8 @@
 
 set -xeo pipefail
 
+cd "$(dirname "$0")"
+
 REPO=192.168.65.1:5000
 
 build_and_push() {
