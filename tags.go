@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 )
 
@@ -54,13 +53,9 @@ func (t *tag) addVersion(args []string, info fileInfo) error {
 		return err
 	}
 
-	readLink, err := readLink(t.versionLinkPath(link))
+	err = verifyLink(link, info)
 	if err != nil {
 		return err
-	}
-
-	if readLink != link {
-		return fmt.Errorf("read link for %s is not equal %s", link, readLink)
 	}
 
 	t.versions = append(t.versions, link)
