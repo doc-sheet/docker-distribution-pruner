@@ -1,12 +1,12 @@
 package main
 
 import (
-	"io/ioutil"
-	"path/filepath"
-	"syscall"
 	"flag"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 type fsStorage struct {
@@ -26,16 +26,18 @@ func (f *fsStorage) Walk(rootDir string, fn walkFunc) error {
 	}
 	rootDir += "/"
 
-	return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+	return filepath.Walk(rootDir, func(fullPath string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
+
+		path := fullPath
 
 		if strings.HasPrefix(path, rootDir) {
 			path = path[len(rootDir):]
 		}
 
-		fi := fileInfo{path: path, size: info.Size()}
+		fi := fileInfo{fullPath: fullPath, size: info.Size()}
 		return fn(path, fi, err)
 	})
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+
 	"github.com/Sirupsen/logrus"
 )
 
@@ -9,6 +10,7 @@ var (
 	debug   = flag.Bool("debug", false, "Print debug messages")
 	verbose = flag.Bool("verbose", true, "Print verbose messages")
 	dryRun  = flag.Bool("dry-run", true, "Dry run")
+	storage = flag.String("storage", "filesystem", "Storage type to use: filesystem or s3")
 )
 
 func main() {
@@ -24,16 +26,20 @@ func main() {
 
 	var err error
 
-	currentStorage = &fsStorage{}
+	switch *storage {
+	case "filesystem":
+		currentStorage = &fsStorage{}
+
+	case "s3":
+		currentStorage = newS3Storage()
+
+	default:
+		logrus.Fatalln("Unknown storage specified:", *storage)
+	}
 
 	blobs := make(blobsData)
 	repositories := make(repositoriesData)
-
-	logrus.Infoln("Walking BLOBS...")
-	err = currentStorage.Walk("blobs", blobs.walk)
-	if err != nil {
-		logrus.Fatalln(err)
-	}
+	deletes := make(deletesData, 0, 1000)
 
 	logrus.Infoln("Walking REPOSITORIES...")
 	err = currentStorage.Walk("repositories", repositories.walk)
@@ -41,22 +47,25 @@ func main() {
 		logrus.Fatalln(err)
 	}
 
+	logrus.Infoln("Walking BLOBS...")
+	err = currentStorage.Walk("blobs", blobs.walk)
+	if err != nil {
+		logrus.Fatalln(err)
+	}
+
 	logrus.Infoln("Marking REPOSITORIES...")
-	err = repositories.mark(blobs)
+	err = repositories.mark(blobs, deletes)
 	if err != nil {
 		logrus.Fatalln(err)
 	}
 
 	logrus.Infoln("Sweeping BLOBS...")
-	blobs.sweep()
+	blobs.sweep(deletes)
 
-	logrus.Warningln("Deleted:", deletedLinks, "links,",
-		deletedBlobs, "blobs,",
-		deletedBlobSize/1024/1024, "in MB",
-	)
+	deletes.info()
 
 	if !*dryRun {
 		logrus.Infoln("Sweeping...")
-		runDeletes()
+		deletes.run()
 	}
 }

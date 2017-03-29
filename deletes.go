@@ -4,19 +4,19 @@ import (
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
-	"syscall"
 )
 
 var (
 	deletedLinks    int
 	deletedBlobs    int
 	deletedBlobSize int64
-	deletes         []string
 )
+
+type deletesData []string
 
 const linkFileSize = int64(len("sha256:") + 64)
 
-func scheduleDelete(path string, size int64) {
+func (d *deletesData) schedule(path string, size int64) {
 	logrus.Infoln("DELETE", path, size)
 	name := filepath.Base(path)
 	if name == "link" {
@@ -25,12 +25,19 @@ func scheduleDelete(path string, size int64) {
 		deletedBlobs++
 	}
 	deletedBlobSize += size
-	deletes = append(deletes, path)
+	*d = append(*d, path)
 }
 
-func runDeletes() {
-	for _, path := range deletes {
-		err := syscall.Unlink(path)
+func (d *deletesData) info() {
+	logrus.Warningln("Deleted:", deletedLinks, "links,",
+		deletedBlobs, "blobs,",
+		deletedBlobSize/1024/1024, "in MB",
+	)
+}
+
+func (d *deletesData) run() {
+	for _, path := range *d {
+		err := currentStorage.Delete(path)
 		if err != nil {
 			logrus.Fatalln(err)
 		}

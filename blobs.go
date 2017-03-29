@@ -28,10 +28,10 @@ func (b blobsData) mark(name string) error {
 	return nil
 }
 
-func (b blobsData) sweep() {
+func (b blobsData) sweep(deletes deletesData) {
 	for _, blob := range b {
 		if blob.references == 0 {
-			scheduleDelete(blob.path(), blob.size)
+			deletes.schedule(blob.path(), blob.size)
 		}
 	}
 }

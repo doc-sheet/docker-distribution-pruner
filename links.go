@@ -1,11 +1,11 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
-	"crypto/md5"
-	"encoding/hex"
 )
 
 func analyzeLink(args []string) (string, error) {
@@ -49,19 +49,22 @@ func verifyLink(link string, info fileInfo) error {
 		content := "sha256:" + link
 		hash := md5.Sum([]byte(content))
 		hex := hex.EncodeToString(hash[:])
+		hex = "\"" + hex + "\""
 		if info.etag == hex {
 			return nil
 		}
-	}
 
-	readed, err := readLink(info.path)
-	if err != nil {
-		return err
-	}
+		return fmt.Errorf("etag for %s is not equal %s to %s", link, info.etag, hex)
+	} else {
+		readed, err := readLink(info.fullPath)
+		if err != nil {
+			return err
+		}
 
-	if readed != link {
-		return fmt.Errorf("readed link for %s is not equal %s", link, readed)
-	}
+		if readed != link {
+			return fmt.Errorf("readed link for %s is not equal %s", link, readed)
+		}
 
-	return nil
+		return nil
+	}
 }

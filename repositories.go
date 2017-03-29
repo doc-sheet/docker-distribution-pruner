@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/Sirupsen/logrus"
 	"path/filepath"
 	"strings"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type repositoryData struct {
@@ -79,9 +80,9 @@ func (r *repositoryData) markLayer(blobs blobsData, name string) error {
 	return blobs.mark(name)
 }
 
-func (r *repositoryData) mark(blobs blobsData) error {
+func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
 	for _, t := range r.tags {
-		err := t.mark(blobs)
+		err := t.mark(blobs, deletes)
 		if err != nil {
 			return err
 		}
@@ -94,7 +95,7 @@ func (r *repositoryData) mark(blobs blobsData) error {
 				return err
 			}
 		} else {
-			scheduleDelete(r.manifestRevisionPath(name), linkFileSize)
+			deletes.schedule(r.manifestRevisionPath(name), linkFileSize)
 		}
 	}
 
@@ -105,7 +106,7 @@ func (r *repositoryData) mark(blobs blobsData) error {
 				return err
 			}
 		} else {
-			scheduleDelete(r.layerLinkPath(name), linkFileSize)
+			deletes.schedule(r.layerLinkPath(name), linkFileSize)
 		}
 	}
 
@@ -190,7 +191,8 @@ func (r *repositoryData) addManifest(args []string, info fileInfo) error {
 func (r *repositoryData) addUpload(args []string, info fileInfo) error {
 	// /test/_uploads/579c7fc9b0d60a19706cd6c1573fec9a28fa758bfe1ece86a1e5c68ad6f4e9d1
 	if len(args) != 1 {
-		return fmt.Errorf("invalid args for uploads: %v", args)
+		logrus.Warningln("invalid args for uploads: %v", args)
+		return nil
 	}
 
 	r.uploads[args[0]] = 1
@@ -223,9 +225,9 @@ func (r repositoriesData) walk(path string, info fileInfo, err error) error {
 	return err
 }
 
-func (r repositoriesData) mark(blobs blobsData) error {
+func (r repositoriesData) mark(blobs blobsData, deletes deletesData) error {
 	for _, repository := range r {
-		err := repository.mark(blobs)
+		err := repository.mark(blobs, deletes)
 		if err != nil {
 			return err
 		}

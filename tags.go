@@ -2,6 +2,8 @@ package main
 
 import (
 	"path/filepath"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type tag struct {
@@ -19,14 +21,14 @@ func (t *tag) versionLinkPath(version string) string {
 	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "index", "sha256", version, "link")
 }
 
-func (t *tag) mark(blobs blobsData) error {
+func (t *tag) mark(blobs blobsData, deletes deletesData) error {
 	if t.current != "" {
 		t.repository.manifests[t.current]++
 	}
 
 	for _, version := range t.versions {
 		if version != t.current {
-			scheduleDelete(t.versionLinkPath(version), linkFileSize)
+			deletes.schedule(t.versionLinkPath(version), linkFileSize)
 		}
 	}
 
@@ -42,6 +44,7 @@ func (t *tag) setCurrent(info fileInfo) error {
 	}
 
 	t.current = readLink
+	logrus.Infoln("TAG:", t.repository.name, ":", t.name, ": is using:", t.current)
 	return nil
 }
 

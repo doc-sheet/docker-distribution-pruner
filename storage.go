@@ -1,17 +1,20 @@
 package main
 
+import "time"
+
 type fileInfo struct {
-	path string
-	size int64
-	etag string
+	fullPath     string
+	size         int64
+	etag         string
+	lastModified time.Time
 }
 
 type walkFunc func(path string, info fileInfo, err error) error
 
-type storage interface {
+type storageObject interface {
 	Walk(path string, fn walkFunc) error
 	Read(path string) ([]byte, error)
 	Delete(path string) error
 }
 
-var currentStorage storage
+var currentStorage storageObject
