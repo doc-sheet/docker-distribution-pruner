@@ -1,10 +1,11 @@
 package main
 
 import (
+	"flag"
 	"path/filepath"
+	"sync"
 
 	"github.com/Sirupsen/logrus"
-	"flag"
 )
 
 var deleteOldTagVersions = flag.Bool("delete-old-tag-versions", true, "Delete old tag versions")
@@ -14,6 +15,7 @@ type tag struct {
 	name       string
 	current    string
 	versions   []string
+	lock       sync.Mutex
 }
 
 func (t *tag) currentLinkPath() string {
@@ -67,6 +69,9 @@ func (t *tag) addVersion(args []string, info fileInfo) error {
 	if err != nil {
 		return err
 	}
+
+	t.lock.Lock()
+	defer t.lock.Unlock()
 
 	t.versions = append(t.versions, link)
 	return nil

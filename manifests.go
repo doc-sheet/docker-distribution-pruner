@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest"
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
-	"sync"
-	"github.com/Sirupsen/logrus"
 )
 
 type manifestData struct {

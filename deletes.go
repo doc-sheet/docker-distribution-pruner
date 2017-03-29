@@ -2,9 +2,9 @@ package main
 
 import (
 	"path/filepath"
+	"sync"
 
 	"github.com/Sirupsen/logrus"
-	"sync"
 )
 
 var (

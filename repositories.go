@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/Sirupsen/logrus"
-	"sync"
 )
 
 type repositoryData struct {
@@ -15,10 +15,11 @@ type repositoryData struct {
 	manifests map[string]int
 	tags      map[string]*tag
 	uploads   map[string]int
-	lock 		sync.Mutex
+	lock      sync.Mutex
 }
 
 type repositoriesData map[string]*repositoryData
+
 var repositoriesLock sync.Mutex
 
 func newRepositoryData(name string) *repositoryData {
@@ -254,8 +255,11 @@ func (r repositoriesData) walk() error {
 	err := currentStorage.Walk("repositories", func(path string, info fileInfo, err error) error {
 		jg.Dispatch(func() error {
 			err = r.process(strings.Split(path, "/"), info)
-			logrus.Infoln("REPOSITORY:", path, ":", err)
-			return err
+			if err != nil {
+				logrus.Infoln("REPOSITORY:", path, ":", err)
+				return err
+			}
+			return nil
 		})
 		return nil
 	})

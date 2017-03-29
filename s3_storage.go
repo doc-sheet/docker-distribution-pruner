@@ -4,25 +4,25 @@ import (
 	"errors"
 	"flag"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
-	"os"
+	"sync/atomic"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"sync/atomic"
-	"github.com/Sirupsen/logrus"
 )
 
 const listMax = 1000
 
 type s3Storage struct {
-	S3 *s3.S3
-	apiCalls int64
-	cacheHits int64
+	S3         *s3.S3
+	apiCalls   int64
+	cacheHits  int64
 	cacheError int64
-	cacheMiss int64
+	cacheMiss  int64
 }
 
 var s3RootDir = flag.String("s3-root-dir", "", "s3 root directory")

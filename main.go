@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
+	"sync"
 
 	"github.com/Sirupsen/logrus"
-	"sync"
 )
 
 var (
