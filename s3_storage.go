@@ -22,7 +22,7 @@ var s3RootDir = flag.String("s3-root-dir", "", "s3 root directory")
 var s3Bucket = flag.String("s3-bucket", "", "s3 bucket")
 var s3Region = flag.String("s3-region", "us-east-1", "s3 region")
 
-func newS3Storage() *s3Storage {
+func newS3Storage() storageObject {
 	sess, err := session.NewSession()
 	if err != nil {
 		panic(err)

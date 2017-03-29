@@ -28,7 +28,7 @@ func main() {
 
 	switch *storage {
 	case "filesystem":
-		currentStorage = &fsStorage{}
+		currentStorage = newFsStorage()
 
 	case "s3":
 		currentStorage = newS3Storage()

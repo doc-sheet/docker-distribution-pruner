@@ -10,10 +10,13 @@ import (
 )
 
 type fsStorage struct {
-	rootDir string
 }
 
 var fsRootDir = flag.String("fs-root-dir", "examples/registry", "root directory")
+
+func newFsStorage() storageObject {
+	return &fsStorage{}
+}
 
 func (f *fsStorage) fullPath(path string) string {
 	return filepath.Join(*fsRootDir, "docker", "registry", "v2", path)
