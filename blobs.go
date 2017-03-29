@@ -5,12 +5,14 @@ import (
 	"github.com/Sirupsen/logrus"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 type blobData struct {
 	name       string
 	size       int64
 	references int64
+	etag       string
 }
 
 func (b *blobData) path() string {
@@ -19,13 +21,26 @@ func (b *blobData) path() string {
 
 type blobsData map[string]*blobData
 
+var blobsLock sync.Mutex
+
 func (b blobsData) mark(name string) error {
+	blobsLock.Lock()
+	defer blobsLock.Unlock()
+
 	blob := b[name]
 	if blob == nil {
 		return fmt.Errorf("blob not found: %v", name)
 	}
 	blob.references++
 	return nil
+}
+
+func (b blobsData) etag(name string) string {
+	blob := b[name]
+	if blob != nil {
+		return blob.etag
+	}
+	return ""
 }
 
 func (b blobsData) sweep(deletes deletesData) {
@@ -61,13 +76,18 @@ func (b blobsData) addBlob(segments []string, info fileInfo) error {
 	blob := &blobData{
 		name: name,
 		size: info.size,
+		etag: info.etag,
 	}
 	b[name] = blob
 	return nil
 }
 
-func (b blobsData) walk(path string, info fileInfo, err error) error {
-	err = b.addBlob(strings.Split(path, "/"), info)
-	logrus.Infoln("BLOB:", path, ":", err)
+func (b blobsData) walk() error {
+	logrus.Infoln("Walking BLOBS...")
+	err := currentStorage.Walk("blobs", func(path string, info fileInfo, err error) error {
+		err = b.addBlob(strings.Split(path, "/"), info)
+		logrus.Infoln("BLOB:", path, ":", err)
+		return err
+	})
 	return err
 }

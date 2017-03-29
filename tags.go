@@ -4,7 +4,10 @@ import (
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
+	"flag"
 )
+
+var deleteOldTagVersions = flag.Bool("delete-old-tag-versions", true, "Delete old tag versions")
 
 type tag struct {
 	repository *repositoryData
@@ -23,12 +26,16 @@ func (t *tag) versionLinkPath(version string) string {
 
 func (t *tag) mark(blobs blobsData, deletes deletesData) error {
 	if t.current != "" {
-		t.repository.manifests[t.current]++
+		t.repository.markManifest(t.current)
 	}
 
 	for _, version := range t.versions {
 		if version != t.current {
-			deletes.schedule(t.versionLinkPath(version), linkFileSize)
+			if *deleteOldTagVersions {
+				deletes.schedule(t.versionLinkPath(version), linkFileSize)
+			} else {
+				t.repository.markManifest(version)
+			}
 		}
 	}
 
@@ -38,7 +45,7 @@ func (t *tag) mark(blobs blobsData, deletes deletesData) error {
 func (t *tag) setCurrent(info fileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/current/link
 
-	readLink, err := readLink(t.currentLinkPath())
+	readLink, err := readLink(t.currentLinkPath(), info.etag)
 	if err != nil {
 		return err
 	}

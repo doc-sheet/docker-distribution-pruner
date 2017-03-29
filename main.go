@@ -4,6 +4,7 @@ import (
 	"flag"
 
 	"github.com/Sirupsen/logrus"
+	"sync"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 	verbose = flag.Bool("verbose", true, "Print verbose messages")
 	dryRun  = flag.Bool("dry-run", true, "Dry run")
 	storage = flag.String("storage", "filesystem", "Storage type to use: filesystem or s3")
+	jobs    = flag.Int("jobs", 100, "Number of concurrent jobs to execute")
 )
 
 func main() {
@@ -41,17 +43,30 @@ func main() {
 	repositories := make(repositoriesData)
 	deletes := make(deletesData, 0, 1000)
 
-	logrus.Infoln("Walking REPOSITORIES...")
-	err = currentStorage.Walk("repositories", repositories.walk)
-	if err != nil {
-		logrus.Fatalln(err)
-	}
+	jobsRunner.run(*jobs)
 
-	logrus.Infoln("Walking BLOBS...")
-	err = currentStorage.Walk("blobs", blobs.walk)
-	if err != nil {
-		logrus.Fatalln(err)
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+
+		err = repositories.walk()
+		if err != nil {
+			logrus.Fatalln(err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		err = blobs.walk()
+		if err != nil {
+			logrus.Fatalln(err)
+		}
+	}()
+
+	wg.Wait()
 
 	logrus.Infoln("Marking REPOSITORIES...")
 	err = repositories.mark(blobs, deletes)
@@ -68,4 +83,6 @@ func main() {
 		logrus.Infoln("Sweeping...")
 		deletes.run()
 	}
+
+	currentStorage.Info()
 }

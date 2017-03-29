@@ -24,8 +24,15 @@ func analyzeLink(args []string) (string, error) {
 	return args[1], nil
 }
 
-func readLink(path string) (string, error) {
-	data, err := currentStorage.Read(path)
+func compareEtag(data []byte, etag string) bool {
+	hash := md5.Sum(data)
+	hex := hex.EncodeToString(hash[:])
+	hex = "\"" + hex + "\""
+	return etag == hex
+}
+
+func readLink(path string, etag string) (string, error) {
+	data, err := currentStorage.Read(path, etag)
 	if err != nil {
 		return "", nil
 	}
@@ -47,16 +54,13 @@ func verifyLink(link string, info fileInfo) error {
 	// If we have e-tag, let's verify e-tag
 	if info.etag != "" {
 		content := "sha256:" + link
-		hash := md5.Sum([]byte(content))
-		hex := hex.EncodeToString(hash[:])
-		hex = "\"" + hex + "\""
-		if info.etag == hex {
+		if compareEtag([]byte(content), info.etag) {
 			return nil
+		} else {
+			return fmt.Errorf("etag for %s is not equal %s", link, info.etag)
 		}
-
-		return fmt.Errorf("etag for %s is not equal %s to %s", link, info.etag, hex)
 	} else {
-		readed, err := readLink(info.fullPath)
+		readed, err := readLink(info.fullPath, info.etag)
 		if err != nil {
 			return err
 		}

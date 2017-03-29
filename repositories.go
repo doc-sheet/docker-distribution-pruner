@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"sync"
 )
 
 type repositoryData struct {
@@ -14,9 +15,11 @@ type repositoryData struct {
 	manifests map[string]int
 	tags      map[string]*tag
 	uploads   map[string]int
+	lock 		sync.Mutex
 }
 
 type repositoriesData map[string]*repositoryData
+var repositoriesLock sync.Mutex
 
 func newRepositoryData(name string) *repositoryData {
 	return &repositoryData{
@@ -41,6 +44,9 @@ func (r *repositoryData) uploadPath(upload string) string {
 }
 
 func (r *repositoryData) tag(name string) *tag {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	t := r.tags[name]
 	if t == nil {
 		t = &tag{
@@ -53,16 +59,27 @@ func (r *repositoryData) tag(name string) *tag {
 	return t
 }
 
-func (r *repositoryData) markManifest(blobs blobsData, name string) error {
+func (r *repositoryData) markManifest(name string) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.manifests[name]++
+	return nil
+}
+
+func (r *repositoryData) markManifestLayers(blobs blobsData, name string) error {
 	err := blobs.mark(name)
 	if err != nil {
 		return err
 	}
 
-	manifest, err := manifests.get(name)
+	manifest, err := manifests.get(name, blobs)
 	if err != nil {
 		return err
 	}
+
+	r.lock.Lock()
+	defer r.lock.Unlock()
 
 	for _, layer := range manifest.layers {
 		_, ok := r.layers[layer]
@@ -88,9 +105,10 @@ func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
 		}
 	}
 
-	for name, used := range r.manifests {
+	for name_, used := range r.manifests {
+		name := name_
 		if used > 0 {
-			err := r.markManifest(blobs, name)
+			err := r.markManifestLayers(blobs, name)
 			if err != nil {
 				return err
 			}
@@ -99,7 +117,8 @@ func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
 		}
 	}
 
-	for name, used := range r.layers {
+	for name_, used := range r.layers {
+		name := name_
 		if used > 0 {
 			err := r.markLayer(blobs, name)
 			if err != nil {
@@ -115,6 +134,9 @@ func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
 
 func (r repositoriesData) get(path []string) *repositoryData {
 	repositoryName := strings.Join(path, "/")
+
+	repositoriesLock.Lock()
+	defer repositoriesLock.Unlock()
 
 	repository := r[repositoryName]
 	if repository == nil {
@@ -137,6 +159,9 @@ func (r *repositoryData) addLayer(args []string, info fileInfo) error {
 		return err
 	}
 
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	r.layers[link] = 0
 	return nil
 }
@@ -152,6 +177,9 @@ func (r *repositoryData) addManifestRevision(args []string, info fileInfo) error
 	if err != nil {
 		return err
 	}
+
+	r.lock.Lock()
+	defer r.lock.Unlock()
 
 	r.manifests[link] = 0
 	return nil
@@ -219,18 +247,42 @@ func (r repositoriesData) process(segments []string, info fileInfo) error {
 	return fmt.Errorf("unparseable path: %v", segments)
 }
 
-func (r repositoriesData) walk(path string, info fileInfo, err error) error {
-	err = r.process(strings.Split(path, "/"), info)
-	logrus.Infoln("REPOSITORY:", path, ":", err)
-	return err
+func (r repositoriesData) walk() error {
+	jg := jobsRunner.group()
+
+	logrus.Infoln("Walking REPOSITORIES...")
+	err := currentStorage.Walk("repositories", func(path string, info fileInfo, err error) error {
+		jg.Dispatch(func() error {
+			err = r.process(strings.Split(path, "/"), info)
+			logrus.Infoln("REPOSITORY:", path, ":", err)
+			return err
+		})
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	err = jg.Finish()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r repositoriesData) mark(blobs blobsData, deletes deletesData) error {
-	for _, repository := range r {
-		err := repository.mark(blobs, deletes)
-		if err != nil {
-			return err
-		}
+	jg := jobsRunner.group()
+
+	for _, repository_ := range r {
+		repository := repository_
+		jg.Dispatch(func() error {
+			return repository.mark(blobs, deletes)
+		})
+	}
+
+	err := jg.Finish()
+	if err != nil {
+		return err
 	}
 	return nil
 }

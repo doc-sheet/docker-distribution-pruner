@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
+	"sync"
 )
 
 var (
@@ -14,9 +15,14 @@ var (
 
 type deletesData []string
 
+var deletesLock sync.Mutex
+
 const linkFileSize = int64(len("sha256:") + 64)
 
 func (d *deletesData) schedule(path string, size int64) {
+	deletesLock.Lock()
+	defer deletesLock.Unlock()
+
 	logrus.Infoln("DELETE", path, size)
 	name := filepath.Base(path)
 	if name == "link" {
@@ -36,10 +42,18 @@ func (d *deletesData) info() {
 }
 
 func (d *deletesData) run() {
-	for _, path := range *d {
-		err := currentStorage.Delete(path)
-		if err != nil {
-			logrus.Fatalln(err)
-		}
+	jg := jobsRunner.group()
+
+	for _, path_ := range *d {
+		path := path_
+		jg.Dispatch(func() error {
+			err := currentStorage.Delete(path)
+			if err != nil {
+				logrus.Fatalln(err)
+			}
+			return nil
+		})
 	}
+
+	jg.Finish()
 }

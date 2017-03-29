@@ -10,16 +10,23 @@ import (
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
+	"sync"
+	"github.com/Sirupsen/logrus"
 )
 
 type manifestData struct {
-	name   string
-	layers []string
+	name    string
+	layers  []string
+	loaded  bool
+	loadErr error
+
+	loadLock sync.Mutex
 }
 
 type manifestsData map[string]*manifestData
 
 var manifests manifestsData = make(map[string]*manifestData)
+var manifestsLock sync.Mutex
 
 func deserializeManifest(data []byte) (distribution.Manifest, error) {
 	var versioned manifest.Versioned
@@ -55,8 +62,10 @@ func (m *manifestData) path() string {
 	return filepath.Join("blobs", "sha256", m.name[0:2], m.name, "data")
 }
 
-func (m *manifestData) load() error {
-	data, err := currentStorage.Read(m.path())
+func (m *manifestData) load(blobs blobsData) error {
+	logrus.Println("MANIFEST:", m.path(), ": loading...")
+
+	data, err := currentStorage.Read(m.path(), blobs.etag(m.name))
 	if err != nil {
 		return err
 	}
@@ -72,18 +81,25 @@ func (m *manifestData) load() error {
 	return nil
 }
 
-func (m manifestsData) get(name string) (*manifestData, error) {
+func (m manifestsData) get(name string, blobs blobsData) (*manifestData, error) {
+	manifestsLock.Lock()
 	manifest := m[name]
 	if manifest == nil {
 		manifest = &manifestData{
 			name: name,
 		}
-
-		err := manifest.load()
-		if err != nil {
-			return nil, err
-		}
 		m[name] = manifest
 	}
-	return manifest, nil
+	manifestsLock.Unlock()
+
+	if !manifest.loaded {
+		manifest.loadLock.Lock()
+		defer manifest.loadLock.Unlock()
+
+		if !manifest.loaded {
+			manifest.loadErr = manifest.load(blobs)
+			manifest.loaded = true
+		}
+	}
+	return manifest, manifest.loadErr
 }

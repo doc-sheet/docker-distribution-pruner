@@ -45,10 +45,13 @@ func (f *fsStorage) Walk(rootDir string, fn walkFunc) error {
 	})
 }
 
-func (f *fsStorage) Read(path string) ([]byte, error) {
+func (f *fsStorage) Read(path string, etag string) ([]byte, error) {
 	return ioutil.ReadFile(f.fullPath(path))
 }
 
 func (f *fsStorage) Delete(path string) error {
 	return syscall.Unlink(f.fullPath(path))
+}
+
+func (f *fsStorage) Info() {
 }

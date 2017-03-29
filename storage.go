@@ -13,8 +13,9 @@ type walkFunc func(path string, info fileInfo, err error) error
 
 type storageObject interface {
 	Walk(path string, fn walkFunc) error
-	Read(path string) ([]byte, error)
+	Read(path string, etag string) ([]byte, error)
 	Delete(path string) error
+	Info()
 }
 
 var currentStorage storageObject
