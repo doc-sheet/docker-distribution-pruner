@@ -11,6 +11,7 @@ import (
 var (
 	deletedLinks    int
 	deletedBlobs    int
+	deletedOther    int
 	deletedBlobSize int64
 )
 
@@ -30,19 +31,29 @@ func (d *deletesData) schedule(path string, size int64) {
 		deletedLinks++
 	} else if name == "data" {
 		deletedBlobs++
+	} else {
+		deletedOther++
 	}
 	deletedBlobSize += size
+	if *dryRun {
+		return
+	}
 	*d = append(*d, path)
 }
 
 func (d *deletesData) info() {
 	logrus.Warningln("DELETEABLE INFO:", deletedLinks, "links,",
 		deletedBlobs, "blobs,",
+		deletedOther, "other,",
 		humanize.Bytes(uint64(deletedBlobSize)),
 	)
 }
 
 func (d *deletesData) run() {
+	if *dryRun {
+		return
+	}
+
 	jg := jobsRunner.group()
 
 	for _, path_ := range *d {

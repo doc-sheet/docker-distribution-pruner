@@ -19,7 +19,7 @@ type repositoryData struct {
 	manifests          map[string]int
 	manifestSignatures map[string][]string
 	tags               map[string]*tag
-	uploads            map[string]int
+	uploads            []string
 	lock               sync.Mutex
 }
 
@@ -37,7 +37,6 @@ func newRepositoryData(name string) *repositoryData {
 		manifests:          make(map[string]int),
 		manifestSignatures: make(map[string][]string),
 		tags:               make(map[string]*tag),
-		uploads:            make(map[string]int),
 	}
 }
 
@@ -232,7 +231,7 @@ func (r *repositoryData) addManifestRevision(args []string, info fileInfo) error
 
 	link, signature, err := analyzeLinkSignature(args)
 	if err == nil {
-		err = verifyLink(link, r.manifestRevisionSignaturePath(link, signature), info.etag)
+		err = verifyLink(signature, r.manifestRevisionSignaturePath(link, signature), info.etag)
 		if err != nil {
 			return err
 		}
@@ -278,13 +277,16 @@ func (r *repositoryData) addManifest(args []string, info fileInfo) error {
 }
 
 func (r *repositoryData) addUpload(args []string, info fileInfo) error {
-	// /test/_uploads/579c7fc9b0d60a19706cd6c1573fec9a28fa758bfe1ece86a1e5c68ad6f4e9d1
-	if len(args) != 1 {
-		// logrus.Warningln("invalid args for uploads: %v", args)
-		return nil
+	// /test/_uploads/f82d2b61-f130-4be5-b4f6-92cb18c7cf89/startedat
+	// /test/_uploads/f82d2b61-f130-4be5-b4f6-92cb18c7cf89/hashstates/sha256/0
+	if len(args) < 1 {
+		return fmt.Errorf("invalid args for uploads: %v", args)
 	}
 
-	r.uploads[args[0]] = 1
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.uploads = append(r.uploads, strings.Join(args, "/"))
 	return nil
 }
 

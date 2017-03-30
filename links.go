@@ -78,19 +78,17 @@ func verifyLink(link string, path string, etag string) error {
 		content := "sha256:" + link
 		if compareEtag([]byte(content), etag) {
 			return nil
-		} else {
-			return fmt.Errorf("etag for %s is not equal %s", link, etag)
 		}
-	} else {
-		readed, err := readLink(path, etag)
-		if err != nil {
-			return err
-		}
-
-		if readed != link {
-			return fmt.Errorf("%s: readed link for %s is not equal %s", path, link, readed)
-		}
-
-		return nil
 	}
+
+	readed, err := readLink(path, etag)
+	if err != nil {
+		return err
+	}
+
+	if readed != link {
+		return fmt.Errorf("%s: readed link for %s is not equal %s", path, link, readed)
+	}
+
+	return nil
 }
