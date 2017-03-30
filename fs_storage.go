@@ -46,6 +46,10 @@ func (f *fsStorage) Walk(rootDir string, baseDir string, fn walkFunc) error {
 			path = path[len(baseDir):]
 		}
 
+		if path == "" {
+			return nil
+		}
+
 		fi := fileInfo{fullPath: fullPath, size: info.Size()}
 		return fn(path, fi, err)
 	})

@@ -1,17 +1,17 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
-	"flag"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/dustin/go-humanize"
 )
 
-var concurrentBlobAccess = flag.Bool("concurrent-blob-access", false, "Allow to use concurrent blob access")
+var parallelBlobWalk = flag.Bool("parallel-blob-walk", true, "Allow to use parallel blob walker")
 
 type blobData struct {
 	name       string
@@ -78,6 +78,9 @@ func (b blobsData) addBlob(segments []string, info fileInfo) error {
 		return fmt.Errorf("path needs to be prefixed with %v: %v", name[0:2], segments)
 	}
 
+	blobsLock.Lock()
+	defer blobsLock.Unlock()
+
 	blob := &blobData{
 		name: name,
 		size: info.size,
@@ -87,45 +90,24 @@ func (b blobsData) addBlob(segments []string, info fileInfo) error {
 	return nil
 }
 
+func (b blobsData) walkPath(walkPath string) error {
+	logrus.Infoln("BLOBS DIR:", walkPath)
+	return currentStorage.Walk(walkPath, "blobs", func(path string, info fileInfo, err error) error {
+		err = b.addBlob(strings.Split(path, "/"), info)
+		logrus.Infoln("BLOB:", path, ":", err)
+		return err
+	})
+}
+
 func (b blobsData) walk() error {
 	logrus.Infoln("Walking BLOBS...")
-	jg := jobsRunner.group()
 
-	if *concurrentBlobAccess {
+	if *parallelBlobWalk {
 		listRootPath := filepath.Join("blobs", "sha256")
-		err := currentStorage.List(listRootPath, func(listPath string, info fileInfo, err error) error {
-			if !info.directory {
-				return nil
-			}
-
-			jg.Dispatch(func() error {
-				walkPath := filepath.Join(listRootPath, listPath)
-				logrus.Infoln("BLOB DIR:", walkPath)
-				return currentStorage.Walk(walkPath, "blobs", func(path string, info fileInfo, err error) error {
-					err = b.addBlob(strings.Split(path, "/"), info)
-					logrus.Infoln("BLOB:", path, ":", err)
-					return err
-				})
-			})
-			return nil
-		})
-		if err != nil {
-			return err
-		}
+		return parallelWalk(listRootPath, b.walkPath)
 	} else {
-		err := currentStorage.Walk("blobs", "blobs", func(path string, info fileInfo, err error) error {
-			if path == "" || info.directory {
-				return nil
-			}
-			err = b.addBlob(strings.Split(path, "/"), info)
-			logrus.Infoln("BLOB:", path, ":", err)
-			return err
-		})
-		if err != nil {
-			return err
-		}
+		return b.walkPath("blobs")
 	}
-	return jg.Finish()
 }
 
 func (b blobsData) info() {

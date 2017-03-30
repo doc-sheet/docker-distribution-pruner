@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"path/filepath"
+	"time"
+)
 
 type fileInfo struct {
 	fullPath     string
@@ -21,3 +24,24 @@ type storageObject interface {
 }
 
 var currentStorage storageObject
+
+func parallelWalk(rootPath string, fn func(string) error) error {
+	pwg := parallelWalkRunner.group()
+
+	err := currentStorage.List(rootPath, func(listPath string, info fileInfo, err error) error {
+		if !info.directory {
+			return nil
+		}
+
+		pwg.Dispatch(func() error {
+			walkPath := filepath.Join(rootPath, listPath)
+			return fn(walkPath)
+		})
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return pwg.Finish()
+}

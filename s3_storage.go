@@ -76,13 +76,21 @@ func (f *s3Storage) Walk(path string, baseDir string, fn walkFunc) error {
 				keyPath = keyPath[len(baseDir):]
 			}
 
+			if keyPath == "" {
+				continue
+			}
+
+			if strings.HasSuffix(keyPath, "/") {
+				logrus.Debugln("S3 Walk:", keyPath, "for", baseDir)
+				continue
+			}
+
 			fi := fileInfo{
 				fullPath:     *key.Key,
 				size:         *key.Size,
 				etag:         *key.ETag,
 				lastModified: *key.LastModified,
 			}
-
 			err = fn(keyPath, fi, err)
 			if err != nil {
 				return err
@@ -132,6 +140,10 @@ func (f *s3Storage) List(path string, fn walkFunc) error {
 				keyPath = keyPath[len(path):]
 			}
 
+			if keyPath == "" {
+				continue
+			}
+
 			fi := fileInfo{
 				fullPath:     *key.Key,
 				size:         *key.Size,
@@ -141,6 +153,27 @@ func (f *s3Storage) List(path string, fn walkFunc) error {
 			}
 
 			err = fn(keyPath, fi, err)
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, commonPrefix := range resp.CommonPrefixes {
+			prefixPath := *commonPrefix.Prefix
+			if strings.HasPrefix(prefixPath, path) {
+				prefixPath = prefixPath[len(path):]
+			}
+
+			if prefixPath == "" {
+				continue
+			}
+
+			fi := fileInfo{
+				fullPath:  *commonPrefix.Prefix,
+				directory: true,
+			}
+
+			err = fn(prefixPath, fi, err)
 			if err != nil {
 				return err
 			}
@@ -179,6 +212,7 @@ func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
 			}
 		} else if os.IsNotExist(err) {
 			atomic.AddInt64(&f.cacheMiss, 1)
+			logrus.Infoln("CACHE MISS: ", path)
 		}
 	}
 

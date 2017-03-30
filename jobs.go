@@ -5,6 +5,7 @@ import "sync"
 type jobsData chan func()
 
 var jobsRunner jobsData = make(jobsData)
+var parallelWalkRunner jobsData = make(jobsData)
 
 func (ch jobsData) group() *jobsGroup {
 	return &jobsGroup{ch: ch}

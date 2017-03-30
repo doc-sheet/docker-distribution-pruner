@@ -2,17 +2,20 @@ package main
 
 import (
 	"flag"
+	"os"
+	"os/signal"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
 )
 
 var (
-	debug   = flag.Bool("debug", false, "Print debug messages")
-	verbose = flag.Bool("verbose", true, "Print verbose messages")
-	dryRun  = flag.Bool("dry-run", true, "Dry run")
-	storage = flag.String("storage", "filesystem", "Storage type to use: filesystem or s3")
-	jobs    = flag.Int("jobs", 100, "Number of concurrent jobs to execute")
+	debug            = flag.Bool("debug", false, "Print debug messages")
+	verbose          = flag.Bool("verbose", true, "Print verbose messages")
+	dryRun           = flag.Bool("dry-run", true, "Dry run")
+	storage          = flag.String("storage", "filesystem", "Storage type to use: filesystem or s3")
+	jobs             = flag.Int("jobs", 100, "Number of concurrent jobs to execute")
+	parallelWalkJobs = flag.Int("parallel-walk-jobs", 100, "Number of concurrent parallel walk jobs to execute")
 )
 
 func main() {
@@ -44,6 +47,17 @@ func main() {
 	deletes := make(deletesData, 0, 1000)
 
 	jobsRunner.run(*jobs)
+	parallelWalkRunner.run(*parallelWalkJobs)
+
+	signals := make(chan os.Signal)
+	signal.Notify(signals, os.Interrupt)
+
+	go func() {
+		for signal := range signals {
+			currentStorage.Info()
+			logrus.Fatalln("Signal received:", signal)
+		}
+	}()
 
 	var wg sync.WaitGroup
 	wg.Add(2)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -23,6 +24,8 @@ type repositoryData struct {
 type repositoriesData map[string]*repositoryData
 
 var repositoriesLock sync.Mutex
+
+var parallelRepositoryWalk = flag.Bool("parallel-repository-walk", true, "Allow to use parallel repository walker")
 
 func newRepositoryData(name string) *repositoryData {
 	return &repositoryData{
@@ -327,11 +330,9 @@ func (r repositoriesData) process(segments []string, info fileInfo) error {
 	return fmt.Errorf("unparseable path: %v", segments)
 }
 
-func (r repositoriesData) walk() error {
-	jg := jobsRunner.group()
-
-	logrus.Infoln("Walking REPOSITORIES...")
-	err := currentStorage.Walk("repositories", "repositories", func(path string, info fileInfo, err error) error {
+func (r repositoriesData) walkPath(walkPath string, jg *jobsGroup) error {
+	logrus.Infoln("REPOSITORIES DIR:", walkPath)
+	return currentStorage.Walk(walkPath, "repositories", func(path string, info fileInfo, err error) error {
 		jg.Dispatch(func() error {
 			err = r.process(strings.Split(path, "/"), info)
 			if err != nil {
@@ -342,15 +343,28 @@ func (r repositoriesData) walk() error {
 		})
 		return nil
 	})
-	if err != nil {
-		return err
+}
+
+func (r repositoriesData) walk() error {
+	logrus.Infoln("Walking REPOSITORIES...")
+
+	jg := jobsRunner.group()
+
+	if *parallelRepositoryWalk {
+		err := parallelWalk("repositories", func(listPath string) error {
+			return r.walkPath(listPath, jg)
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		err := r.walkPath("repositories", jg)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = jg.Finish()
-	if err != nil {
-		return err
-	}
-	return nil
+	return jg.Finish()
 }
 
 func (r repositoriesData) mark(blobs blobsData, deletes deletesData) error {
