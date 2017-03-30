@@ -39,6 +39,8 @@ func main() {
 		logrus.SetLevel(logrus.WarnLevel)
 	}
 
+	logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true})
+
 	var err error
 
 	switch *storage {
