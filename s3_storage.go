@@ -212,7 +212,7 @@ func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
 			}
 		} else if os.IsNotExist(err) {
 			atomic.AddInt64(&f.cacheMiss, 1)
-			logrus.Infoln("CACHE MISS: ", path)
+			logrus.Infoln("CACHE MISS:", path)
 		}
 	}
 
