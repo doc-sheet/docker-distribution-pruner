@@ -14,8 +14,8 @@ var (
 	verbose          = flag.Bool("verbose", true, "Print verbose messages")
 	dryRun           = flag.Bool("dry-run", true, "Dry run")
 	storage          = flag.String("storage", "filesystem", "Storage type to use: filesystem or s3")
-	jobs             = flag.Int("jobs", 100, "Number of concurrent jobs to execute")
-	parallelWalkJobs = flag.Int("parallel-walk-jobs", 100, "Number of concurrent parallel walk jobs to execute")
+	jobs             = flag.Int("jobs", 10, "Number of concurrent jobs to execute")
+	parallelWalkJobs = flag.Int("parallel-walk-jobs", 10, "Number of concurrent parallel walk jobs to execute")
 )
 
 func main() {
