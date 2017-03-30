@@ -22,12 +22,18 @@ func (f *fsStorage) fullPath(path string) string {
 	return filepath.Join(*fsRootDir, "docker", "registry", "v2", path)
 }
 
-func (f *fsStorage) Walk(rootDir string, fn walkFunc) error {
+func (f *fsStorage) Walk(rootDir string, baseDir string, fn walkFunc) error {
 	rootDir, err := filepath.Abs(f.fullPath(rootDir))
 	if err != nil {
 		return nil
 	}
 	rootDir += "/"
+
+	baseDir, err = filepath.Abs(f.fullPath(baseDir))
+	if err != nil {
+		return nil
+	}
+	baseDir += "/"
 
 	return filepath.Walk(rootDir, func(fullPath string, info os.FileInfo, err error) error {
 		if info.IsDir() {
@@ -36,12 +42,47 @@ func (f *fsStorage) Walk(rootDir string, fn walkFunc) error {
 
 		path := fullPath
 
-		if strings.HasPrefix(path, rootDir) {
-			path = path[len(rootDir):]
+		if strings.HasPrefix(path, baseDir) {
+			path = path[len(baseDir):]
 		}
 
 		fi := fileInfo{fullPath: fullPath, size: info.Size()}
 		return fn(path, fi, err)
+	})
+}
+
+func (f *fsStorage) List(rootDir string, fn walkFunc) error {
+	rootDir, err := filepath.Abs(f.fullPath(rootDir))
+	if err != nil {
+		return nil
+	}
+	rootDir += "/"
+
+	return filepath.Walk(rootDir, func(fullPath string, info os.FileInfo, err error) error {
+		path := fullPath
+
+		if strings.HasPrefix(path, rootDir) {
+			path = path[len(rootDir):]
+		}
+
+		if path == "" {
+			return nil
+		}
+
+		fi := fileInfo{fullPath: fullPath, size: info.Size(), directory: info.IsDir()}
+
+		if info.IsDir() {
+			err = fn(path, fi, err)
+			if err != nil {
+				return err
+			}
+
+			return filepath.SkipDir
+		} else {
+
+			fi := fileInfo{fullPath: fullPath, size: info.Size()}
+			return fn(path, fi, err)
+		}
 	})
 }
 

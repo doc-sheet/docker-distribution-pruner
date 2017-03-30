@@ -65,7 +65,7 @@ func (t *tag) addVersion(args []string, info fileInfo) error {
 		return err
 	}
 
-	err = verifyLink(link, info)
+	err = verifyLink(link, t.versionLinkPath(link), info.etag)
 	if err != nil {
 		return err
 	}

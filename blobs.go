@@ -5,10 +5,13 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"flag"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/dustin/go-humanize"
 )
+
+var concurrentBlobAccess = flag.Bool("concurrent-blob-access", false, "Allow to use concurrent blob access")
 
 type blobData struct {
 	name       string
@@ -86,12 +89,43 @@ func (b blobsData) addBlob(segments []string, info fileInfo) error {
 
 func (b blobsData) walk() error {
 	logrus.Infoln("Walking BLOBS...")
-	err := currentStorage.Walk("blobs", func(path string, info fileInfo, err error) error {
-		err = b.addBlob(strings.Split(path, "/"), info)
-		logrus.Infoln("BLOB:", path, ":", err)
-		return err
-	})
-	return err
+	jg := jobsRunner.group()
+
+	if *concurrentBlobAccess {
+		listRootPath := filepath.Join("blobs", "sha256")
+		err := currentStorage.List(listRootPath, func(listPath string, info fileInfo, err error) error {
+			if !info.directory {
+				return nil
+			}
+
+			jg.Dispatch(func() error {
+				walkPath := filepath.Join(listRootPath, listPath)
+				logrus.Infoln("BLOB DIR:", walkPath)
+				return currentStorage.Walk(walkPath, "blobs", func(path string, info fileInfo, err error) error {
+					err = b.addBlob(strings.Split(path, "/"), info)
+					logrus.Infoln("BLOB:", path, ":", err)
+					return err
+				})
+			})
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		err := currentStorage.Walk("blobs", "blobs", func(path string, info fileInfo, err error) error {
+			if path == "" || info.directory {
+				return nil
+			}
+			err = b.addBlob(strings.Split(path, "/"), info)
+			logrus.Infoln("BLOB:", path, ":", err)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return jg.Finish()
 }
 
 func (b blobsData) info() {

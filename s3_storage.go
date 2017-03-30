@@ -45,10 +45,15 @@ func (f *s3Storage) fullPath(path string) string {
 	return filepath.Join(*s3RootDir, "docker", "registry", "v2", path)
 }
 
-func (f *s3Storage) Walk(path string, fn walkFunc) error {
+func (f *s3Storage) Walk(path string, baseDir string, fn walkFunc) error {
 	path = f.fullPath(path)
 	if path != "/" && path[len(path)-1] != '/' {
 		path = path + "/"
+	}
+
+	baseDir = f.fullPath(baseDir)
+	if baseDir != "/" && baseDir[len(baseDir)-1] != '/' {
+		baseDir = baseDir + "/"
 	}
 
 	atomic.AddInt64(&f.apiCalls, 1)
@@ -67,8 +72,8 @@ func (f *s3Storage) Walk(path string, fn walkFunc) error {
 		for _, key := range resp.Contents {
 			lastKey = *key.Key
 			keyPath := *key.Key
-			if strings.HasPrefix(keyPath, path) {
-				keyPath = keyPath[len(path):]
+			if strings.HasPrefix(keyPath, baseDir) {
+				keyPath = keyPath[len(baseDir):]
 			}
 
 			fi := fileInfo{
@@ -91,6 +96,64 @@ func (f *s3Storage) Walk(path string, fn walkFunc) error {
 				Prefix:  aws.String(path),
 				MaxKeys: aws.Int64(listMax),
 				Marker:  aws.String(lastKey),
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			break
+		}
+	}
+
+	return nil
+}
+
+func (f *s3Storage) List(path string, fn walkFunc) error {
+	path = f.fullPath(path)
+	if path != "/" && path[len(path)-1] != '/' {
+		path = path + "/"
+	}
+
+	atomic.AddInt64(&f.apiCalls, 1)
+	resp, err := f.S3.ListObjects(&s3.ListObjectsInput{
+		Bucket:    s3Bucket,
+		Prefix:    aws.String(path),
+		Delimiter: aws.String("/"),
+		MaxKeys:   aws.Int64(listMax),
+	})
+	if err != nil {
+		return err
+	}
+
+	for {
+		for _, key := range resp.Contents {
+			keyPath := *key.Key
+			if strings.HasPrefix(keyPath, path) {
+				keyPath = keyPath[len(path):]
+			}
+
+			fi := fileInfo{
+				fullPath:     *key.Key,
+				size:         *key.Size,
+				etag:         *key.ETag,
+				lastModified: *key.LastModified,
+				directory:    strings.HasSuffix(*key.Key, "/"),
+			}
+
+			err = fn(keyPath, fi, err)
+			if err != nil {
+				return err
+			}
+		}
+
+		if *resp.IsTruncated {
+			atomic.AddInt64(&f.apiCalls, 1)
+			resp, err = f.S3.ListObjects(&s3.ListObjectsInput{
+				Bucket:    s3Bucket,
+				Prefix:    aws.String(path),
+				MaxKeys:   aws.Int64(listMax),
+				Delimiter: aws.String("/"),
+				Marker:    resp.NextMarker,
 			})
 			if err != nil {
 				return err

@@ -11,12 +11,13 @@ import (
 )
 
 type repositoryData struct {
-	name      string
-	layers    map[string]int
-	manifests map[string]int
-	tags      map[string]*tag
-	uploads   map[string]int
-	lock      sync.Mutex
+	name               string
+	layers             map[string]int
+	manifests          map[string]int
+	manifestSignatures map[string][]string
+	tags               map[string]*tag
+	uploads            map[string]int
+	lock               sync.Mutex
 }
 
 type repositoriesData map[string]*repositoryData
@@ -25,11 +26,12 @@ var repositoriesLock sync.Mutex
 
 func newRepositoryData(name string) *repositoryData {
 	return &repositoryData{
-		name:      name,
-		layers:    make(map[string]int),
-		manifests: make(map[string]int),
-		tags:      make(map[string]*tag),
-		uploads:   make(map[string]int),
+		name:               name,
+		layers:             make(map[string]int),
+		manifests:          make(map[string]int),
+		manifestSignatures: make(map[string][]string),
+		tags:               make(map[string]*tag),
+		uploads:            make(map[string]int),
 	}
 }
 
@@ -39,6 +41,10 @@ func (r *repositoryData) layerLinkPath(layer string) string {
 
 func (r *repositoryData) manifestRevisionPath(revision string) string {
 	return filepath.Join("repositories", r.name, "_manifests", "revisions", "sha256", revision, "link")
+}
+
+func (r *repositoryData) manifestRevisionSignaturePath(revision, signature string) string {
+	return filepath.Join("repositories", r.name, "_manifests", "revisions", "sha256", revision, "signatures", "sha256", signature, "link")
 }
 
 func (r *repositoryData) uploadPath(upload string) string {
@@ -95,6 +101,19 @@ func (r *repositoryData) markManifestLayers(blobs blobsData, name string) error 
 	return nil
 }
 
+func (r *repositoryData) markManifestSignatures(deletes deletesData, blobs blobsData, name string, signatures []string) error {
+	if r.manifests[name] > 0 {
+		for _, signature := range signatures {
+			blobs.mark(signature)
+		}
+	} else {
+		for _, signature := range signatures {
+			deletes.schedule(r.manifestRevisionSignaturePath(name, signature), linkFileSize)
+		}
+	}
+	return nil
+}
+
 func (r *repositoryData) markLayer(blobs blobsData, name string) error {
 	return blobs.mark(name)
 }
@@ -116,6 +135,13 @@ func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
 			}
 		} else {
 			deletes.schedule(r.manifestRevisionPath(name), linkFileSize)
+		}
+	}
+
+	for name, signatures := range r.manifestSignatures {
+		err := r.markManifestSignatures(deletes, blobs, name, signatures)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -156,7 +182,7 @@ func (r *repositoryData) addLayer(args []string, info fileInfo) error {
 		return err
 	}
 
-	err = verifyLink(link, info)
+	err = verifyLink(link, r.layerLinkPath(link), info.etag)
 	if err != nil {
 		return err
 	}
@@ -171,20 +197,33 @@ func (r *repositoryData) addLayer(args []string, info fileInfo) error {
 func (r *repositoryData) addManifestRevision(args []string, info fileInfo) error {
 	// /test2/_manifests/revisions/sha256/708519982eae159899e908639f5fa22d23d247ad923f6e6ad6128894c5d497a0/link
 	link, err := analyzeLink(args)
-	if err != nil {
-		return err
+	if err == nil {
+		err = verifyLink(link, r.manifestRevisionPath(link), info.etag)
+		if err != nil {
+			return err
+		}
+
+		r.lock.Lock()
+		defer r.lock.Unlock()
+
+		r.manifests[link] = 0
+		return nil
 	}
 
-	err = verifyLink(link, info)
-	if err != nil {
-		return err
+	link, signature, err := analyzeLinkSignature(args)
+	if err == nil {
+		err = verifyLink(link, r.manifestRevisionSignaturePath(link, signature), info.etag)
+		if err != nil {
+			return err
+		}
+
+		r.lock.Lock()
+		defer r.lock.Unlock()
+
+		r.manifestSignatures[link] = append(r.manifestSignatures[link], signature)
+		return nil
 	}
-
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	r.manifests[link] = 0
-	return nil
+	return err
 }
 
 func (r *repositoryData) addTag(args []string, info fileInfo) error {
@@ -221,7 +260,7 @@ func (r *repositoryData) addManifest(args []string, info fileInfo) error {
 func (r *repositoryData) addUpload(args []string, info fileInfo) error {
 	// /test/_uploads/579c7fc9b0d60a19706cd6c1573fec9a28fa758bfe1ece86a1e5c68ad6f4e9d1
 	if len(args) != 1 {
-		logrus.Warningln("invalid args for uploads: %v", args)
+		// logrus.Warningln("invalid args for uploads: %v", args)
 		return nil
 	}
 
@@ -292,7 +331,7 @@ func (r repositoriesData) walk() error {
 	jg := jobsRunner.group()
 
 	logrus.Infoln("Walking REPOSITORIES...")
-	err := currentStorage.Walk("repositories", func(path string, info fileInfo, err error) error {
+	err := currentStorage.Walk("repositories", "repositories", func(path string, info fileInfo, err error) error {
 		jg.Dispatch(func() error {
 			err = r.process(strings.Split(path, "/"), info)
 			if err != nil {
