@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -26,6 +28,7 @@ type repositoriesData map[string]*repositoryData
 var repositoriesLock sync.Mutex
 
 var parallelRepositoryWalk = flag.Bool("parallel-repository-walk", true, "Allow to use parallel repository walker")
+var repositoryCsvOutput = flag.String("repository-csv-output", "", "File to which CSV will be written with all metrics")
 
 func newRepositoryData(name string) *repositoryData {
 	return &repositoryData{
@@ -271,7 +274,7 @@ func (r *repositoryData) addUpload(args []string, info fileInfo) error {
 	return nil
 }
 
-func (r *repositoryData) info(blobs blobsData) {
+func (r *repositoryData) info(blobs blobsData, stream io.WriteCloser) {
 	var layersUsed, layersUnused int
 	var manifestsUsed, manifestsUnused int
 	var tagsVersions int
@@ -304,6 +307,15 @@ func (r *repositoryData) info(blobs blobsData) {
 		"Manifests/Unused:", manifestsUsed, "/", manifestsUnused,
 		"Layers/Unused:", layersUsed, "/", layersUnused,
 		"Data/Unused:", humanize.Bytes(uint64(layersUsedSize)), "/", humanize.Bytes(uint64(layersUnusedSize)))
+
+	if stream != nil {
+		fmt.Fprintf(stream, "%s,%d,%d,%d,%d,%d,%d,%s,%s,%d,%d\n",
+			r.name, len(r.tags), tagsVersions,
+			manifestsUsed, manifestsUnused,
+			layersUsed, layersUnused,
+			humanize.Bytes(uint64(layersUsedSize)), humanize.Bytes(uint64(layersUnusedSize)),
+			layersUsedSize/1024/1024, layersUnusedSize/1024/1024)
+	}
 }
 
 func (r repositoriesData) process(segments []string, info fileInfo) error {
@@ -381,7 +393,34 @@ func (r repositoriesData) mark(blobs blobsData, deletes deletesData) error {
 }
 
 func (r repositoriesData) info(blobs blobsData) {
+	var stream io.WriteCloser
+
+	if *repositoryCsvOutput != "" {
+		stream, err := os.Create(*repositoryCsvOutput)
+		if err == nil {
+			defer stream.Close()
+
+			labels := []string{
+				"Repository",
+				"Tags",
+				"TagVersions",
+				"Manifests",
+				"ManifestsUnused",
+				"Layers",
+				"LayersUnused",
+				"Data",
+				"DataUnused",
+				"Data-MB",
+				"DataUnused-MB",
+			}
+
+			fmt.Fprintln(stream, strings.Join(labels, ","))
+		} else {
+			logrus.Warningln(err)
+		}
+	}
+
 	for _, repository := range r {
-		repository.info(blobs)
+		repository.info(blobs, stream)
 	}
 }
