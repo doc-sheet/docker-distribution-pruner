@@ -396,7 +396,8 @@ func (r repositoriesData) info(blobs blobsData) {
 	var stream io.WriteCloser
 
 	if *repositoryCsvOutput != "" {
-		stream, err := os.Create(*repositoryCsvOutput)
+		var err error
+		stream, err = os.Create(*repositoryCsvOutput)
 		if err == nil {
 			defer stream.Close()
 
