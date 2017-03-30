@@ -13,8 +13,8 @@ var deleteOldTagVersions = flag.Bool("delete-old-tag-versions", true, "Delete ol
 type tag struct {
 	repository *repositoryData
 	name       string
-	current    string
-	versions   []string
+	current    digest
+	versions   []digest
 	lock       sync.Mutex
 }
 
@@ -22,19 +22,21 @@ func (t *tag) currentLinkPath() string {
 	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "current", "link")
 }
 
-func (t *tag) versionLinkPath(version string) string {
-	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "index", "sha256", version, "link")
+func (t *tag) versionLinkPath(version digest) string {
+	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "index", version.path(), "link")
 }
 
 func (t *tag) mark(blobs blobsData, deletes deletesData) error {
-	if t.current != "" {
+	if t.current.valid() {
 		t.repository.markManifest(t.current)
+	} else {
+		deletes.schedule(t.currentLinkPath(), digestReferenceSize)
 	}
 
 	for _, version := range t.versions {
 		if version != t.current {
 			if *deleteOldTagVersions {
-				deletes.schedule(t.versionLinkPath(version), linkFileSize)
+				deletes.schedule(t.versionLinkPath(version), digestReferenceSize)
 			} else {
 				t.repository.markManifest(version)
 			}
@@ -47,12 +49,12 @@ func (t *tag) mark(blobs blobsData, deletes deletesData) error {
 func (t *tag) setCurrent(info fileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/current/link
 
-	readLink, err := readLink(t.currentLinkPath(), info.etag)
+	link, err := readLink(t.currentLinkPath(), info.etag)
 	if err != nil {
 		return err
 	}
 
-	t.current = readLink
+	t.current = link
 	logrus.Infoln("TAG:", t.repository.name, ":", t.name, ": is using:", t.current)
 	return nil
 }

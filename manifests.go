@@ -15,17 +15,17 @@ import (
 )
 
 type manifestData struct {
-	name    string
-	layers  []string
+	digest  digest
+	layers  []digest
 	loaded  bool
 	loadErr error
 
 	loadLock sync.Mutex
 }
 
-type manifestsData map[string]*manifestData
+type manifestsData map[digest]*manifestData
 
-var manifests manifestsData = make(map[string]*manifestData)
+var manifests manifestsData = make(map[digest]*manifestData)
 var manifestsLock sync.Mutex
 
 func deserializeManifest(data []byte) (distribution.Manifest, error) {
@@ -59,13 +59,13 @@ func deserializeManifest(data []byte) (distribution.Manifest, error) {
 }
 
 func (m *manifestData) path() string {
-	return filepath.Join("blobs", "sha256", m.name[0:2], m.name, "data")
+	return filepath.Join("blobs", m.digest.scopedPath(), "data")
 }
 
 func (m *manifestData) load(blobs blobsData) error {
 	logrus.Println("MANIFEST:", m.path(), ": loading...")
 
-	data, err := currentStorage.Read(m.path(), blobs.etag(m.name))
+	data, err := currentStorage.Read(m.path(), blobs.etag(m.digest))
 	if err != nil {
 		return err
 	}
@@ -76,19 +76,23 @@ func (m *manifestData) load(blobs blobsData) error {
 	}
 
 	for _, reference := range manifest.References() {
-		m.layers = append(m.layers, reference.Digest.Hex())
+		digest, err := newDigestFromReference([]byte(reference.Digest))
+		if err != nil {
+			return err
+		}
+		m.layers = append(m.layers, digest)
 	}
 	return nil
 }
 
-func (m manifestsData) get(name string, blobs blobsData) (*manifestData, error) {
+func (m manifestsData) get(digest digest, blobs blobsData) (*manifestData, error) {
 	manifestsLock.Lock()
-	manifest := m[name]
+	manifest := m[digest]
 	if manifest == nil {
 		manifest = &manifestData{
-			name: name,
+			digest: digest,
 		}
-		m[name] = manifest
+		m[digest] = manifest
 	}
 	manifestsLock.Unlock()
 

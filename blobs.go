@@ -14,46 +14,46 @@ import (
 var parallelBlobWalk = flag.Bool("parallel-blob-walk", true, "Allow to use parallel blob walker")
 
 type blobData struct {
-	name       string
+	name       digest
 	size       int64
 	references int64
 	etag       string
 }
 
 func (b *blobData) path() string {
-	return filepath.Join("blobs", "sha256", b.name[0:2], b.name, "data")
+	return filepath.Join("blobs", b.name.scopedPath(), "data")
 }
 
-type blobsData map[string]*blobData
+type blobsData map[digest]*blobData
 
 var blobsLock sync.Mutex
 
-func (b blobsData) mark(name string) error {
-	blobsLock.Lock()
-	defer blobsLock.Unlock()
-
+func (b blobsData) mark(digest digest) error {
 	if *ignoreBlobs {
 		return nil
 	}
 
-	blob := b[name]
+	blobsLock.Lock()
+	defer blobsLock.Unlock()
+
+	blob := b[digest]
 	if blob == nil {
-		return fmt.Errorf("blob not found: %v", name)
+		return fmt.Errorf("blob not found: %v", digest)
 	}
 	blob.references++
 	return nil
 }
 
-func (b blobsData) etag(name string) string {
-	blob := b[name]
+func (b blobsData) etag(digest digest) string {
+	blob := b[digest]
 	if blob != nil {
 		return blob.etag
 	}
 	return ""
 }
 
-func (b blobsData) size(name string) int64 {
-	blob := b[name]
+func (b blobsData) size(digest digest) int64 {
+	blob := b[digest]
 	if blob != nil {
 		return blob.size
 	}
@@ -73,32 +73,28 @@ func (b blobsData) addBlob(segments []string, info fileInfo) error {
 		return fmt.Errorf("unparseable path: %v", segments)
 	}
 
-	if segments[0] != "sha256" {
-		return fmt.Errorf("path needs to start with sha256: %v", segments)
-	}
-
 	if segments[3] != "data" {
 		return fmt.Errorf("file needs to be data: %v", segments)
 	}
 
-	name := segments[2]
-	if len(name) != 64 {
-		return fmt.Errorf("blobs need to be sha256: %v", segments)
+	digest, err := newDigestFromScopedPath(segments[0:3])
+	if err != nil {
+		return err
 	}
 
-	if segments[1] != name[0:2] {
-		return fmt.Errorf("path needs to be prefixed with %v: %v", name[0:2], segments)
+	if segments[0] != "sha256" {
+		return fmt.Errorf("path needs to start with sha256: %v", segments)
 	}
 
 	blobsLock.Lock()
 	defer blobsLock.Unlock()
 
 	blob := &blobData{
-		name: name,
+		name: digest,
 		size: info.size,
 		etag: info.etag,
 	}
-	b[name] = blob
+	b[digest] = blob
 	return nil
 }
 

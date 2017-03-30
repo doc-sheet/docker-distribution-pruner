@@ -15,9 +15,9 @@ import (
 
 type repositoryData struct {
 	name               string
-	layers             map[string]int
-	manifests          map[string]int
-	manifestSignatures map[string][]string
+	layers             map[digest]int
+	manifests          map[digest]int
+	manifestSignatures map[digest][]digest
 	tags               map[string]*tag
 	uploads            []string
 	lock               sync.Mutex
@@ -33,23 +33,23 @@ var repositoryCsvOutput = flag.String("repository-csv-output", "repositories.csv
 func newRepositoryData(name string) *repositoryData {
 	return &repositoryData{
 		name:               name,
-		layers:             make(map[string]int),
-		manifests:          make(map[string]int),
-		manifestSignatures: make(map[string][]string),
+		layers:             make(map[digest]int),
+		manifests:          make(map[digest]int),
+		manifestSignatures: make(map[digest][]digest),
 		tags:               make(map[string]*tag),
 	}
 }
 
-func (r *repositoryData) layerLinkPath(layer string) string {
-	return filepath.Join("repositories", r.name, "_layers", "sha256", layer, "link")
+func (r *repositoryData) layerLinkPath(layer digest) string {
+	return filepath.Join("repositories", r.name, "_layers", layer.path(), "link")
 }
 
-func (r *repositoryData) manifestRevisionPath(revision string) string {
-	return filepath.Join("repositories", r.name, "_manifests", "revisions", "sha256", revision, "link")
+func (r *repositoryData) manifestRevisionPath(revision digest) string {
+	return filepath.Join("repositories", r.name, "_manifests", "revisions", revision.path(), "link")
 }
 
-func (r *repositoryData) manifestRevisionSignaturePath(revision, signature string) string {
-	return filepath.Join("repositories", r.name, "_manifests", "revisions", "sha256", revision, "signatures", "sha256", signature, "link")
+func (r *repositoryData) manifestRevisionSignaturePath(revision, signature digest) string {
+	return filepath.Join("repositories", r.name, "_manifests", "revisions", revision.path(), "signatures", signature.path(), "link")
 }
 
 func (r *repositoryData) uploadPath(upload string) string {
@@ -72,21 +72,21 @@ func (r *repositoryData) tag(name string) *tag {
 	return t
 }
 
-func (r *repositoryData) markManifest(name string) error {
+func (r *repositoryData) markManifest(revision digest) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	r.manifests[name]++
+	r.manifests[revision]++
 	return nil
 }
 
-func (r *repositoryData) markManifestLayers(blobs blobsData, name string) error {
-	err := blobs.mark(name)
+func (r *repositoryData) markManifestLayers(blobs blobsData, revision digest) error {
+	err := blobs.mark(revision)
 	if err != nil {
 		return err
 	}
 
-	manifest, err := manifests.get(name, blobs)
+	manifest, err := manifests.get(revision, blobs)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (r *repositoryData) markManifestLayers(blobs blobsData, name string) error 
 	for _, layer := range manifest.layers {
 		_, ok := r.layers[layer]
 		if !ok {
-			return fmt.Errorf("layer %s not found reference from manifest %s", layer, name)
+			return fmt.Errorf("layer %s not found reference from manifest %s", layer, revision)
 		}
 
 		r.layers[layer]++
@@ -106,21 +106,21 @@ func (r *repositoryData) markManifestLayers(blobs blobsData, name string) error 
 	return nil
 }
 
-func (r *repositoryData) markManifestSignatures(deletes deletesData, blobs blobsData, name string, signatures []string) error {
-	if r.manifests[name] > 0 {
+func (r *repositoryData) markManifestSignatures(deletes deletesData, blobs blobsData, revision digest, signatures []digest) error {
+	if r.manifests[revision] > 0 {
 		for _, signature := range signatures {
 			blobs.mark(signature)
 		}
 	} else {
 		for _, signature := range signatures {
-			deletes.schedule(r.manifestRevisionSignaturePath(name, signature), linkFileSize)
+			deletes.schedule(r.manifestRevisionSignaturePath(revision, signature), digestReferenceSize)
 		}
 	}
 	return nil
 }
 
-func (r *repositoryData) markLayer(blobs blobsData, name string) error {
-	return blobs.mark(name)
+func (r *repositoryData) markLayer(blobs blobsData, revision digest) error {
+	return blobs.mark(revision)
 }
 
 func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
@@ -135,44 +135,44 @@ func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
 		}
 	}
 
-	for name, used := range r.manifests {
+	for revision, used := range r.manifests {
 		if used > 0 {
-			err := r.markManifestLayers(blobs, name)
+			err := r.markManifestLayers(blobs, revision)
 			if err != nil {
 				if *softErrors {
-					logrus.Errorln("MARK:", r.name, "MANIFEST:", name, "ERROR:", err)
+					logrus.Errorln("MARK:", r.name, "MANIFEST:", revision, "ERROR:", err)
 					continue
 				}
 				return err
 			}
 		} else {
-			deletes.schedule(r.manifestRevisionPath(name), linkFileSize)
+			deletes.schedule(r.manifestRevisionPath(revision), digestReferenceSize)
 		}
 	}
 
-	for name, signatures := range r.manifestSignatures {
-		err := r.markManifestSignatures(deletes, blobs, name, signatures)
+	for revision, signatures := range r.manifestSignatures {
+		err := r.markManifestSignatures(deletes, blobs, revision, signatures)
 		if err != nil {
 			if *softErrors {
-				logrus.Errorln("MARK:", r.name, "MANIFEST SIGNATURE:", name, "ERROR:", err)
+				logrus.Errorln("MARK:", r.name, "MANIFEST SIGNATURE:", revision, "ERROR:", err)
 				continue
 			}
 			return err
 		}
 	}
 
-	for name, used := range r.layers {
+	for digest, used := range r.layers {
 		if used > 0 {
-			err := r.markLayer(blobs, name)
+			err := r.markLayer(blobs, digest)
 			if err != nil {
 				if *softErrors {
-					logrus.Errorln("MARK:", r.name, "LAYER:", name, "ERROR:", err)
+					logrus.Errorln("MARK:", r.name, "LAYER:", digest, "ERROR:", err)
 					continue
 				}
 				return err
 			}
 		} else {
-			deletes.schedule(r.layerLinkPath(name), linkFileSize)
+			deletes.schedule(r.layerLinkPath(digest), digestReferenceSize)
 		}
 	}
 
@@ -296,13 +296,13 @@ func (r *repositoryData) info(blobs blobsData, stream io.WriteCloser) {
 	var tagsVersions int
 	var layersUsedSize, layersUnusedSize int64
 
-	for name, used := range r.layers {
+	for digest, used := range r.layers {
 		if used > 0 {
 			layersUsed++
-			layersUsedSize += blobs.size(name)
+			layersUsedSize += blobs.size(digest)
 		} else {
 			layersUnused++
-			layersUnusedSize += blobs.size(name)
+			layersUnusedSize += blobs.size(digest)
 		}
 	}
 

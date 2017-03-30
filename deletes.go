@@ -19,8 +19,6 @@ type deletesData []string
 
 var deletesLock sync.Mutex
 
-const linkFileSize = int64(len("sha256:") + 64)
-
 func (d *deletesData) schedule(path string, size int64) {
 	deletesLock.Lock()
 	defer deletesLock.Unlock()
