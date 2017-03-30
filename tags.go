@@ -10,7 +10,7 @@ import (
 
 var deleteOldTagVersions = flag.Bool("delete-old-tag-versions", true, "Delete old tag versions")
 
-type tag struct {
+type tagData struct {
 	repository *repositoryData
 	name       string
 	current    digest
@@ -18,15 +18,15 @@ type tag struct {
 	lock       sync.Mutex
 }
 
-func (t *tag) currentLinkPath() string {
+func (t *tagData) currentLinkPath() string {
 	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "current", "link")
 }
 
-func (t *tag) versionLinkPath(version digest) string {
+func (t *tagData) versionLinkPath(version digest) string {
 	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "index", version.path(), "link")
 }
 
-func (t *tag) mark(blobs blobsData, deletes deletesData) error {
+func (t *tagData) mark(blobs blobsData, deletes deletesData) error {
 	if t.current.valid() {
 		t.repository.markManifest(t.current)
 	} else {
@@ -46,7 +46,7 @@ func (t *tag) mark(blobs blobsData, deletes deletesData) error {
 	return nil
 }
 
-func (t *tag) setCurrent(info fileInfo) error {
+func (t *tagData) setCurrent(info fileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/current/link
 
 	link, err := readLink(t.currentLinkPath(), info.etag)
@@ -59,7 +59,7 @@ func (t *tag) setCurrent(info fileInfo) error {
 	return nil
 }
 
-func (t *tag) addVersion(args []string, info fileInfo) error {
+func (t *tagData) addVersion(args []string, info fileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/index/sha256/af8338145978acd626bfb9e863fa446bebfc9f2660bee1af99ed29efc48d73b4/link
 
 	link, err := analyzeLink(args)

@@ -18,7 +18,7 @@ type repositoryData struct {
 	layers             map[digest]int
 	manifests          map[digest]int
 	manifestSignatures map[digest][]digest
-	tags               map[string]*tag
+	tags               map[string]*tagData
 	uploads            []string
 	lock               sync.Mutex
 }
@@ -36,7 +36,7 @@ func newRepositoryData(name string) *repositoryData {
 		layers:             make(map[digest]int),
 		manifests:          make(map[digest]int),
 		manifestSignatures: make(map[digest][]digest),
-		tags:               make(map[string]*tag),
+		tags:               make(map[string]*tagData),
 	}
 }
 
@@ -56,13 +56,13 @@ func (r *repositoryData) uploadPath(upload string) string {
 	return filepath.Join("repositories", r.name, "_uploads", upload, "link")
 }
 
-func (r *repositoryData) tag(name string) *tag {
+func (r *repositoryData) tag(name string) *tagData {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	t := r.tags[name]
 	if t == nil {
-		t = &tag{
+		t = &tagData{
 			repository: r,
 			name:       name,
 		}
