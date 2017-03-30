@@ -62,7 +62,7 @@ func main() {
 	parallelWalkRunner.run(*parallelWalkJobs)
 
 	signals := make(chan os.Signal)
-	signal.Notify(signals, os.Interrupt)
+	signal.Notify(signals, os.Interrupt, os.Kill)
 
 	go func() {
 		for signal := range signals {
