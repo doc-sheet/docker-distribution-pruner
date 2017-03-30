@@ -16,6 +16,7 @@ var (
 	storage          = flag.String("storage", "filesystem", "Storage type to use: filesystem or s3")
 	jobs             = flag.Int("jobs", 10, "Number of concurrent jobs to execute")
 	parallelWalkJobs = flag.Int("parallel-walk-jobs", 10, "Number of concurrent parallel walk jobs to execute")
+	ignoreBlobs      = flag.Bool("ignore-blobs", true, "Ignore blobs processing and recycling")
 )
 
 func main() {
@@ -73,6 +74,10 @@ func main() {
 
 	go func() {
 		defer wg.Done()
+
+		if *ignoreBlobs {
+			return
+		}
 
 		err = blobs.walk()
 		if err != nil {

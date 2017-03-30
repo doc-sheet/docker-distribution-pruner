@@ -278,16 +278,12 @@ func (r *repositoryData) info(blobs blobsData) {
 	var layersUsedSize, layersUnusedSize int64
 
 	for name, used := range r.layers {
-		blob := blobs[name]
-		if blob == nil {
-			continue
-		}
 		if used > 0 {
 			layersUsed++
-			layersUsedSize += blob.size
+			layersUsedSize += blobs.size(name)
 		} else {
 			layersUnused++
-			layersUnusedSize += blob.size
+			layersUnusedSize += blobs.size(name)
 		}
 	}
 

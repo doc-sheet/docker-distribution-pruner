@@ -32,6 +32,10 @@ func (b blobsData) mark(name string) error {
 	blobsLock.Lock()
 	defer blobsLock.Unlock()
 
+	if *ignoreBlobs {
+		return nil
+	}
+
 	blob := b[name]
 	if blob == nil {
 		return fmt.Errorf("blob not found: %v", name)
@@ -46,6 +50,14 @@ func (b blobsData) etag(name string) string {
 		return blob.etag
 	}
 	return ""
+}
+
+func (b blobsData) size(name string) int64 {
+	blob := b[name]
+	if blob != nil {
+		return blob.size
+	}
+	return 0
 }
 
 func (b blobsData) sweep(deletes deletesData) {
@@ -113,6 +125,10 @@ func (b blobsData) walk() error {
 func (b blobsData) info() {
 	var blobsUsed, blobsUnused int
 	var blobsUsedSize, blobsUnusedSize int64
+
+	if *ignoreBlobs {
+		return
+	}
 
 	for _, blob := range b {
 		if blob.references > 0 {
