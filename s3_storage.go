@@ -148,6 +148,6 @@ func (f *s3Storage) Delete(path string) error {
 }
 
 func (f *s3Storage) Info() {
-	logrus.Infoln("S3: API calls:", f.apiCalls,
+	logrus.Infoln("S3 INFO: API calls:", f.apiCalls,
 		"Cache (hit/miss/error):", f.cacheHits, f.cacheMiss, f.cacheError)
 }

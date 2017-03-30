@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/Sirupsen/logrus"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/dustin/go-humanize"
 )
 
 type blobData struct {
@@ -90,4 +92,24 @@ func (b blobsData) walk() error {
 		return err
 	})
 	return err
+}
+
+func (b blobsData) info() {
+	var blobsUsed, blobsUnused int
+	var blobsUsedSize, blobsUnusedSize int64
+
+	for _, blob := range b {
+		if blob.references > 0 {
+			blobsUsed++
+			blobsUsedSize += blob.size
+		} else {
+			blobsUnused++
+			blobsUnusedSize += blob.size
+		}
+	}
+
+	logrus.Infoln("BLOBS INFO:",
+		"Objects/Unused:", blobsUsed, "/", blobsUnused,
+		"Data/Unused:", humanize.Bytes(uint64(blobsUsedSize)), "/", humanize.Bytes(uint64(blobsUnusedSize)),
+	)
 }

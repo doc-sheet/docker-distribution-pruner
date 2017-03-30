@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/dustin/go-humanize"
 )
 
 type repositoryData struct {
@@ -228,6 +229,45 @@ func (r *repositoryData) addUpload(args []string, info fileInfo) error {
 	return nil
 }
 
+func (r *repositoryData) info(blobs blobsData) {
+	var layersUsed, layersUnused int
+	var manifestsUsed, manifestsUnused int
+	var tagsVersions int
+	var layersUsedSize, layersUnusedSize int64
+
+	for name, used := range r.layers {
+		blob := blobs[name]
+		if blob == nil {
+			continue
+		}
+		if used > 0 {
+			layersUsed++
+			layersUsedSize += blob.size
+		} else {
+			layersUnused++
+			layersUnusedSize += blob.size
+		}
+	}
+
+	for _, used := range r.manifests {
+		if used > 0 {
+			manifestsUsed++
+		} else {
+			manifestsUnused++
+		}
+	}
+
+	for _, tag := range r.tags {
+		tagsVersions += len(tag.versions)
+	}
+
+	logrus.Println("REPOSITORY INFO:", r.name, ":",
+		"Tags/Versions:", len(r.tags), "/", tagsVersions,
+		"Manifests/Unused:", manifestsUsed, "/", manifestsUnused,
+		"Layers/Unused:", layersUsed, "/", layersUnused,
+		"Data/Unused:", humanize.Bytes(uint64(layersUsedSize)), "/", humanize.Bytes(uint64(layersUnusedSize)))
+}
+
 func (r repositoriesData) process(segments []string, info fileInfo) error {
 	for idx := 0; idx < len(segments)-1; idx++ {
 		repository := segments[0:idx]
@@ -289,4 +329,10 @@ func (r repositoriesData) mark(blobs blobsData, deletes deletesData) error {
 		return err
 	}
 	return nil
+}
+
+func (r repositoriesData) info(blobs blobsData) {
+	for _, repository := range r {
+		repository.info(blobs)
+	}
 }

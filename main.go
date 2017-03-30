@@ -84,5 +84,7 @@ func main() {
 		deletes.run()
 	}
 
+	repositories.info(blobs)
+	blobs.info()
 	currentStorage.Info()
 }

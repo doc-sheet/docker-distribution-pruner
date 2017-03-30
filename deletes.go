@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/dustin/go-humanize"
 )
 
 var (
@@ -35,9 +36,9 @@ func (d *deletesData) schedule(path string, size int64) {
 }
 
 func (d *deletesData) info() {
-	logrus.Warningln("Deleted:", deletedLinks, "links,",
+	logrus.Warningln("DELETEABLE INFO:", deletedLinks, "links,",
 		deletedBlobs, "blobs,",
-		deletedBlobSize/1024/1024, "in MB",
+		humanize.Bytes(uint64(deletedBlobSize)),
 	)
 }
 
