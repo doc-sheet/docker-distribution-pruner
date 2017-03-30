@@ -60,7 +60,7 @@ func (b blobsData) size(digest digest) int64 {
 	return 0
 }
 
-func (b blobsData) sweep(deletes deletesData) {
+func (b blobsData) sweep(deletes *deletesData) {
 	for _, blob := range b {
 		if blob.references == 0 {
 			deletes.schedule(blob.path(), blob.size)

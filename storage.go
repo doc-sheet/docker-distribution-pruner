@@ -20,6 +20,7 @@ type storageObject interface {
 	List(path string, fn walkFunc) error
 	Read(path string, etag string) ([]byte, error)
 	Delete(path string) error
+	Move(path, newPath string) error
 	Info()
 }
 

@@ -15,7 +15,9 @@ var (
 	deletedBlobSize int64
 )
 
-type deletesData []string
+type deletesData struct {
+	files []string
+}
 
 var deletesLock sync.Mutex
 
@@ -33,10 +35,7 @@ func (d *deletesData) schedule(path string, size int64) {
 		deletedOther++
 	}
 	deletedBlobSize += size
-	if *dryRun {
-		return
-	}
-	*d = append(*d, path)
+	d.files = append(d.files, path)
 }
 
 func (d *deletesData) info() {
@@ -47,19 +46,22 @@ func (d *deletesData) info() {
 	)
 }
 
-func (d *deletesData) run() {
-	if *dryRun {
-		return
-	}
-
+func (d *deletesData) run(softDelete bool) {
 	jg := jobsRunner.group()
 
-	for _, path_ := range *d {
+	for _, path_ := range d.files {
 		path := path_
 		jg.Dispatch(func() error {
-			err := currentStorage.Delete(path)
-			if err != nil {
-				logrus.Fatalln(err)
+			if softDelete {
+				err := currentStorage.Move(path, filepath.Join("backup", path))
+				if err != nil {
+					logrus.Fatalln(err)
+				}
+			} else {
+				err := currentStorage.Delete(path)
+				if err != nil {
+					logrus.Fatalln(err)
+				}
 			}
 			return nil
 		})

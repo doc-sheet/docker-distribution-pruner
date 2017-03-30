@@ -106,7 +106,7 @@ func (r *repositoryData) markManifestLayers(blobs blobsData, revision digest) er
 	return nil
 }
 
-func (r *repositoryData) markManifestSignatures(deletes deletesData, blobs blobsData, revision digest, signatures []digest) error {
+func (r *repositoryData) markManifestSignatures(deletes *deletesData, blobs blobsData, revision digest, signatures []digest) error {
 	if r.manifests[revision] > 0 {
 		for _, signature := range signatures {
 			blobs.mark(signature)
@@ -123,7 +123,7 @@ func (r *repositoryData) markLayer(blobs blobsData, revision digest) error {
 	return blobs.mark(revision)
 }
 
-func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
+func (r *repositoryData) mark(blobs blobsData, deletes *deletesData) error {
 	for name, t := range r.tags {
 		err := t.mark(blobs, deletes)
 		if err != nil {
@@ -398,7 +398,7 @@ func (r repositoriesData) walk() error {
 	return jg.Finish()
 }
 
-func (r repositoriesData) mark(blobs blobsData, deletes deletesData) error {
+func (r repositoriesData) mark(blobs blobsData, deletes *deletesData) error {
 	jg := jobsRunner.group()
 
 	for _, repository_ := range r {

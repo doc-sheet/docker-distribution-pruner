@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"io/ioutil"
 	"os"
@@ -18,11 +17,12 @@ import (
 const listMax = 1000
 
 type s3Storage struct {
-	S3         *s3.S3
-	apiCalls   int64
-	cacheHits  int64
-	cacheError int64
-	cacheMiss  int64
+	S3                *s3.S3
+	apiCalls          int64
+	expensiveApiCalls int64
+	cacheHits         int64
+	cacheError        int64
+	cacheMiss         int64
 }
 
 var s3RootDir = flag.String("s3-root-dir", "", "s3 root directory")
@@ -43,6 +43,10 @@ func newS3Storage() storageObject {
 
 func (f *s3Storage) fullPath(path string) string {
 	return filepath.Join(*s3RootDir, "docker", "registry", "v2", path)
+}
+
+func (f *s3Storage) backupPath(path string) string {
+	return filepath.Join(*s3RootDir, "docker-backup", "registry", "v2", path)
 }
 
 func (f *s3Storage) Walk(path string, baseDir string, fn walkFunc) error {
@@ -241,10 +245,28 @@ func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
 }
 
 func (f *s3Storage) Delete(path string) error {
-	return errors.New("not supported")
+	atomic.AddInt64(&f.expensiveApiCalls, 1)
+	_, err := f.S3.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: s3Bucket,
+		Key:    aws.String(f.fullPath(path)),
+	})
+	return err
+}
+
+func (f *s3Storage) Move(path, newPath string) error {
+	atomic.AddInt64(&f.expensiveApiCalls, 1)
+	_, err := f.S3.CopyObject(&s3.CopyObjectInput{
+		CopySource: aws.String("/" + *s3Bucket + "/" + f.fullPath(path)),
+		Bucket:     s3Bucket,
+		Key:        aws.String(f.backupPath(newPath)),
+	})
+	if err != nil {
+		return err
+	}
+	return f.Delete(path)
 }
 
 func (f *s3Storage) Info() {
-	logrus.Infoln("S3 INFO: API calls:", f.apiCalls,
+	logrus.Infoln("S3 INFO: API calls/expensive:", f.apiCalls, f.expensiveApiCalls,
 		"Cache (hit/miss/error):", f.cacheHits, f.cacheMiss, f.cacheError)
 }

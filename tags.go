@@ -26,7 +26,7 @@ func (t *tagData) versionLinkPath(version digest) string {
 	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "index", version.path(), "link")
 }
 
-func (t *tagData) mark(blobs blobsData, deletes deletesData) error {
+func (t *tagData) mark(blobs blobsData, deletes *deletesData) error {
 	if t.current.valid() {
 		t.repository.markManifest(t.current)
 	} else {

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 )
 
 type fsStorage struct {
@@ -20,6 +19,10 @@ func newFsStorage() storageObject {
 
 func (f *fsStorage) fullPath(path string) string {
 	return filepath.Join(*fsRootDir, "docker", "registry", "v2", path)
+}
+
+func (f *fsStorage) backupPath(path string) string {
+	return filepath.Join(*fsRootDir, "docker_backup", "registry", "v2", path)
 }
 
 func (f *fsStorage) Walk(rootDir string, baseDir string, fn walkFunc) error {
@@ -95,7 +98,14 @@ func (f *fsStorage) Read(path string, etag string) ([]byte, error) {
 }
 
 func (f *fsStorage) Delete(path string) error {
-	return syscall.Unlink(f.fullPath(path))
+	return os.Remove(f.fullPath(path))
+}
+
+func (f *fsStorage) Move(path, newPath string) error {
+	path = f.fullPath(path)
+	newPath = f.backupPath(newPath)
+	os.MkdirAll(filepath.Dir(newPath), 0700)
+	return os.Rename(path, newPath)
 }
 
 func (f *fsStorage) Info() {
