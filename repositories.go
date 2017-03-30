@@ -28,7 +28,7 @@ type repositoriesData map[string]*repositoryData
 var repositoriesLock sync.Mutex
 
 var parallelRepositoryWalk = flag.Bool("parallel-repository-walk", true, "Allow to use parallel repository walker")
-var repositoryCsvOutput = flag.String("repository-csv-output", "", "File to which CSV will be written with all metrics")
+var repositoryCsvOutput = flag.String("repository-csv-output", "repositories.csv", "File to which CSV will be written with all metrics")
 
 func newRepositoryData(name string) *repositoryData {
 	return &repositoryData{
@@ -125,18 +125,25 @@ func (r *repositoryData) markLayer(blobs blobsData, name string) error {
 }
 
 func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
-	for _, t := range r.tags {
+	for name, t := range r.tags {
 		err := t.mark(blobs, deletes)
 		if err != nil {
+			if *softErrors {
+				logrus.Errorln("MARK:", r.name, "TAG:", name, "ERROR:", err)
+				continue
+			}
 			return err
 		}
 	}
 
-	for name_, used := range r.manifests {
-		name := name_
+	for name, used := range r.manifests {
 		if used > 0 {
 			err := r.markManifestLayers(blobs, name)
 			if err != nil {
+				if *softErrors {
+					logrus.Errorln("MARK:", r.name, "MANIFEST:", name, "ERROR:", err)
+					continue
+				}
 				return err
 			}
 		} else {
@@ -147,15 +154,22 @@ func (r *repositoryData) mark(blobs blobsData, deletes deletesData) error {
 	for name, signatures := range r.manifestSignatures {
 		err := r.markManifestSignatures(deletes, blobs, name, signatures)
 		if err != nil {
+			if *softErrors {
+				logrus.Errorln("MARK:", r.name, "MANIFEST SIGNATURE:", name, "ERROR:", err)
+				continue
+			}
 			return err
 		}
 	}
 
-	for name_, used := range r.layers {
-		name := name_
+	for name, used := range r.layers {
 		if used > 0 {
 			err := r.markLayer(blobs, name)
 			if err != nil {
+				if *softErrors {
+					logrus.Errorln("MARK:", r.name, "LAYER:", name, "ERROR:", err)
+					continue
+				}
 				return err
 			}
 		} else {
@@ -344,7 +358,14 @@ func (r repositoriesData) walkPath(walkPath string, jg *jobsGroup) error {
 		jg.Dispatch(func() error {
 			err = r.process(strings.Split(path, "/"), info)
 			if err != nil {
-				logrus.Infoln("REPOSITORY:", path, ":", err)
+				if err != nil {
+					logrus.Errorln("REPOSITORY:", path, ":", err)
+					if *softErrors {
+						return nil
+					}
+				} else {
+					logrus.Infoln("REPOSITORY:", path, ":", err)
+				}
 				return err
 			}
 			return nil

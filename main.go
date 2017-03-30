@@ -17,7 +17,16 @@ var (
 	jobs             = flag.Int("jobs", 10, "Number of concurrent jobs to execute")
 	parallelWalkJobs = flag.Int("parallel-walk-jobs", 10, "Number of concurrent parallel walk jobs to execute")
 	ignoreBlobs      = flag.Bool("ignore-blobs", true, "Ignore blobs processing and recycling")
+	softErrors       = flag.Bool("soft-errors", false, "Print errors, but do not fail")
 )
+
+func logErrorln(args ...interface{}) {
+	if *softErrors {
+		logrus.Errorln(args...)
+	} else {
+		logrus.Fatalln(args...)
+	}
+}
 
 func main() {
 	flag.Parse()
@@ -68,7 +77,7 @@ func main() {
 
 		err = repositories.walk()
 		if err != nil {
-			logrus.Fatalln(err)
+			logErrorln(err)
 		}
 	}()
 
@@ -81,7 +90,7 @@ func main() {
 
 		err = blobs.walk()
 		if err != nil {
-			logrus.Fatalln(err)
+			logErrorln(err)
 		}
 	}()
 
@@ -90,7 +99,7 @@ func main() {
 	logrus.Infoln("Marking REPOSITORIES...")
 	err = repositories.mark(blobs, deletes)
 	if err != nil {
-		logrus.Fatalln(err)
+		logErrorln(err)
 	}
 
 	logrus.Infoln("Sweeping BLOBS...")

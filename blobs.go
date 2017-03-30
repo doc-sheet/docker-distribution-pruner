@@ -106,7 +106,14 @@ func (b blobsData) walkPath(walkPath string) error {
 	logrus.Infoln("BLOBS DIR:", walkPath)
 	return currentStorage.Walk(walkPath, "blobs", func(path string, info fileInfo, err error) error {
 		err = b.addBlob(strings.Split(path, "/"), info)
-		logrus.Infoln("BLOB:", path, ":", err)
+		if err != nil {
+			logrus.Errorln("BLOB:", path, ":", err)
+			if *softErrors {
+				return nil
+			}
+		} else {
+			logrus.Infoln("BLOB:", path, ":", err)
+		}
 		return err
 	})
 }
