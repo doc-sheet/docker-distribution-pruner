@@ -57,6 +57,17 @@ Reclaim disk space:
 docker-distribution-pruner -storage=s3 -s3-bucket=my-bucket -delete
 ```
 
+### S3 effectiveness
+
+We do not download individual objects, instead do global wide list API call, returning 1000 objects at single time.
+We use ETag and name of files to ensure consistency of repository instead of reading files where it is possible to save 
+API calls, network bandwidth and improve speed.
+
+Sometimes we have to download objects (links, manifests), and usually it is wasteful to do it every time.
+Instead, when S3 is used the downloaded data are stored by default in `tmp-cache/`.
+To ensure the data consistency we verify ETag (md5 of the object content).
+For large repositories it allows to save hundreds of thousands requests and also with fast SSD drive it makes it crazy fast.
+
 ### Large registries
 
 This tool can effectively run on registries that consists of million objects and terrabytes of data in reasonable time.
