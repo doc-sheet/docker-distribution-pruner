@@ -22,6 +22,7 @@ type s3Storage struct {
 	S3                *s3.S3
 	apiCalls          int64
 	expensiveApiCalls int64
+	freeApiCalls      int64
 	cacheHits         int64
 	cacheError        int64
 	cacheMiss         int64
@@ -233,7 +234,7 @@ func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
 }
 
 func (f *s3Storage) Delete(path string) error {
-	atomic.AddInt64(&f.expensiveApiCalls, 1)
+	atomic.AddInt64(&f.freeApiCalls, 1)
 	_, err := f.S3.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(f.Bucket),
 		Key:    aws.String(f.fullPath(path)),
@@ -255,7 +256,7 @@ func (f *s3Storage) Move(path, newPath string) error {
 }
 
 func (f *s3Storage) Info() {
-	logrus.Infoln("S3 INFO: API calls/expensive:", f.apiCalls, f.expensiveApiCalls,
+	logrus.Infoln("S3 INFO: API calls/expensive/free:", f.apiCalls, f.expensiveApiCalls, f.freeApiCalls,
 		"Cache (hit/miss/error):", f.cacheHits, f.cacheMiss, f.cacheError)
 }
 

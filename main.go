@@ -10,13 +10,25 @@ import (
 )
 
 var (
-	config           = flag.String("config", "", "Path to registry config file")
-	debug            = flag.Bool("debug", false, "Print debug messages")
-	verbose          = flag.Bool("verbose", true, "Print verbose messages")
+	config = flag.String("config", "", "Path to registry config file")
+
+	ignoreBlobs = flag.Bool("ignore-blobs", false, "Ignore blobs processing and recycling")
+
 	jobs             = flag.Int("jobs", 10, "Number of concurrent jobs to execute")
 	parallelWalkJobs = flag.Int("parallel-walk-jobs", 10, "Number of concurrent parallel walk jobs to execute")
-	ignoreBlobs      = flag.Bool("ignore-blobs", false, "Ignore blobs processing and recycling")
-	softErrors       = flag.Bool("soft-errors", false, "Print errors, but do not fail")
+
+	debug      = flag.Bool("debug", false, "Print debug messages")
+	verbose    = flag.Bool("verbose", true, "Print verbose messages")
+	softErrors = flag.Bool("soft-errors", false, "Print errors, but do not fail")
+
+	parallelRepositoryWalk = flag.Bool("parallel-repository-walk", false, "Allow to use parallel repository walker")
+	parallelBlobWalk       = flag.Bool("parallel-blob-walk", false, "Allow to use parallel blob walker")
+
+	repositoryCsvOutput = flag.String("repository-csv-output", "repositories.csv", "File to which CSV will be written with all metrics")
+
+	deleteOldTagVersions = flag.Bool("delete-old-tag-versions", true, "Delete old tag versions")
+	delete               = flag.Bool("delete", false, "Delete data, instead of dry run")
+	softDelete           = flag.Bool("soft-delete", true, "When deleting, do not remove, but move to backup/ folder")
 )
 
 var (
@@ -78,7 +90,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		err = repositories.walk()
+		err = repositories.walk(*parallelRepositoryWalk)
 		if err != nil {
 			logErrorln(err)
 		}
@@ -91,7 +103,7 @@ func main() {
 			return
 		}
 
-		err = blobs.walk()
+		err = blobs.walk(*parallelBlobWalk)
 		if err != nil {
 			logErrorln(err)
 		}
@@ -118,7 +130,7 @@ func main() {
 	}
 
 	logrus.Infoln("Summary...")
-	repositories.info(blobs)
+	repositories.info(blobs, *repositoryCsvOutput)
 	blobs.info()
 	deletesInfo()
 	currentStorage.Info()

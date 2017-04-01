@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -10,8 +9,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/dustin/go-humanize"
 )
-
-var parallelBlobWalk = flag.Bool("parallel-blob-walk", true, "Allow to use parallel blob walker")
 
 type blobsData map[digest]*blobData
 
@@ -116,10 +113,10 @@ func (b blobsData) walkPath(walkPath string) error {
 	})
 }
 
-func (b blobsData) walk() error {
+func (b blobsData) walk(parallel bool) error {
 	logrus.Infoln("Walking BLOBS...")
 
-	if *parallelBlobWalk {
+	if parallel {
 		listRootPath := filepath.Join("blobs", "sha256")
 		return parallelWalk(listRootPath, b.walkPath)
 	} else {

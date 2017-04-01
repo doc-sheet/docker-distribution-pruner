@@ -1,14 +1,11 @@
 package main
 
 import (
-	"flag"
 	"path/filepath"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
 )
-
-var deleteOldTagVersions = flag.Bool("delete-old-tag-versions", true, "Delete old tag versions")
 
 type tagData struct {
 	repository *repositoryData

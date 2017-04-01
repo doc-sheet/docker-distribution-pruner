@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -10,9 +9,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 )
-
-var parallelRepositoryWalk = flag.Bool("parallel-repository-walk", true, "Allow to use parallel repository walker")
-var repositoryCsvOutput = flag.String("repository-csv-output", "repositories.csv", "File to which CSV will be written with all metrics")
 
 type repositoriesData map[string]*repositoryData
 
@@ -75,12 +71,12 @@ func (r repositoriesData) walkPath(walkPath string, jg *jobGroup) error {
 	})
 }
 
-func (r repositoriesData) walk() error {
+func (r repositoriesData) walk(parallel bool) error {
 	logrus.Infoln("Walking REPOSITORIES...")
 
 	jg := jobsRunner.group()
 
-	if *parallelRepositoryWalk {
+	if parallel {
 		err := parallelWalk("repositories", func(listPath string) error {
 			return r.walkPath(listPath, jg)
 		})
@@ -131,12 +127,12 @@ func (r repositoriesData) sweep() error {
 	return nil
 }
 
-func (r repositoriesData) info(blobs blobsData) {
+func (r repositoriesData) info(blobs blobsData, csvOutput string) {
 	var stream io.WriteCloser
 
-	if *repositoryCsvOutput != "" {
+	if csvOutput != "" {
 		var err error
-		stream, err = os.Create(*repositoryCsvOutput)
+		stream, err = os.Create(csvOutput)
 		if err == nil {
 			defer stream.Close()
 

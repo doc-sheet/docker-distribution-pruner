@@ -10,8 +10,8 @@ It uses optimised file accesses and API calls to create walk DAG.
 
 ### Installation
 
-```
-go get -u gitlab.com/gitlab-org/docker-distribution-pruner
+```bash
+$ go get -u gitlab.com/gitlab-org/docker-distribution-pruner
 ```
 
 ### Preface
@@ -29,13 +29,13 @@ If you run `-delete -soft-delete=false` you will remove data forever.
 Dry run:
 
 ```bash
-docker-distribution-pruner -config=/path/to/registry/configuration
+$ docker-distribution-pruner -config=/path/to/registry/configuration
 ```
 
 Reclaim disk space:
 
 ```bash
-docker-distribution-pruner -config=/path/to/registry/configuration -delete
+$ docker-distribution-pruner -config=/path/to/registry/configuration -delete
 ```
 
 ### GitLab Omnibus
@@ -43,7 +43,7 @@ docker-distribution-pruner -config=/path/to/registry/configuration -delete
 Run:
 
 ```bash
-docker-distribution-pruner -config=/var/opt/gitlab/registry/config.yml
+$ docker-distribution-pruner -config=/var/opt/gitlab/registry/config.yml
 ```
 
 ### S3 effectiveness
@@ -62,7 +62,14 @@ For large repositories it allows to save hundreds of thousands requests and also
 This tool can effectively run on registries that consists of million objects and terrabytes of data in reasonable time.
 To ensure smooth run ensure to have at least 4GB for 5 million objects stored in registry.
 
+To speed-up processing of large repositories enable parallel blobs and repository processing:
+
+```bash
+$ docker-distribution-pruner -config=/path/to/registry/configuration -parallel-repository-walk -parallel-blob-walk
+```
+
 You can also tune performance settings (less or more):
+
 ```
 -jobs=100 -parallel-walk-jobs=100
 ```

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"path/filepath"
 	"sync/atomic"
 
@@ -14,11 +13,6 @@ var (
 	deletedBlobs    int32
 	deletedOther    int32
 	deletedBlobSize int64
-)
-
-var (
-	delete     = flag.Bool("delete", false, "Delete data, instead of dry run")
-	softDelete = flag.Bool("soft-delete", true, "When deleting, do not remove, but move to backup/ folder")
 )
 
 func deleteFile(path string, size int64) error {
