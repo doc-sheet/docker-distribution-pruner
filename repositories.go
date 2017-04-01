@@ -106,14 +106,26 @@ func (r *repositoryData) markManifestLayers(blobs blobsData, revision digest) er
 	return nil
 }
 
-func (r *repositoryData) markManifestSignatures(deletes *deletesData, blobs blobsData, revision digest, signatures []digest) error {
+func (r *repositoryData) markManifestSignatures(blobs blobsData, revision digest, signatures []digest) error {
+	if r.manifests[revision] == 0 {
+		return nil
+	}
+
+	for _, signature := range signatures {
+		blobs.mark(signature)
+	}
+	return nil
+}
+
+func (r *repositoryData) sweepManifestSignatures(revision digest, signatures []digest) error {
 	if r.manifests[revision] > 0 {
-		for _, signature := range signatures {
-			blobs.mark(signature)
-		}
-	} else {
-		for _, signature := range signatures {
-			deletes.schedule(r.manifestRevisionSignaturePath(revision, signature), digestReferenceSize)
+		return nil
+	}
+
+	for _, signature := range signatures {
+		err := deleteFile(r.manifestRevisionSignaturePath(revision, signature), digestReferenceSize)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -123,9 +135,9 @@ func (r *repositoryData) markLayer(blobs blobsData, revision digest) error {
 	return blobs.mark(revision)
 }
 
-func (r *repositoryData) mark(blobs blobsData, deletes *deletesData) error {
+func (r *repositoryData) mark(blobs blobsData) error {
 	for name, t := range r.tags {
-		err := t.mark(blobs, deletes)
+		err := t.mark(blobs)
 		if err != nil {
 			if *softErrors {
 				logrus.Errorln("MARK:", r.name, "TAG:", name, "ERROR:", err)
@@ -136,22 +148,22 @@ func (r *repositoryData) mark(blobs blobsData, deletes *deletesData) error {
 	}
 
 	for revision, used := range r.manifests {
-		if used > 0 {
-			err := r.markManifestLayers(blobs, revision)
-			if err != nil {
-				if *softErrors {
-					logrus.Errorln("MARK:", r.name, "MANIFEST:", revision, "ERROR:", err)
-					continue
-				}
-				return err
+		if used == 0 {
+			continue
+		}
+
+		err := r.markManifestLayers(blobs, revision)
+		if err != nil {
+			if *softErrors {
+				logrus.Errorln("MARK:", r.name, "MANIFEST:", revision, "ERROR:", err)
+				continue
 			}
-		} else {
-			deletes.schedule(r.manifestRevisionPath(revision), digestReferenceSize)
+			return err
 		}
 	}
 
 	for revision, signatures := range r.manifestSignatures {
-		err := r.markManifestSignatures(deletes, blobs, revision, signatures)
+		err := r.markManifestSignatures(blobs, revision, signatures)
 		if err != nil {
 			if *softErrors {
 				logrus.Errorln("MARK:", r.name, "MANIFEST SIGNATURE:", revision, "ERROR:", err)
@@ -162,17 +174,72 @@ func (r *repositoryData) mark(blobs blobsData, deletes *deletesData) error {
 	}
 
 	for digest, used := range r.layers {
-		if used > 0 {
-			err := r.markLayer(blobs, digest)
-			if err != nil {
-				if *softErrors {
-					logrus.Errorln("MARK:", r.name, "LAYER:", digest, "ERROR:", err)
-					continue
-				}
-				return err
+		if used == 0 {
+			continue
+		}
+
+		err := r.markLayer(blobs, digest)
+		if err != nil {
+			if *softErrors {
+				logrus.Errorln("MARK:", r.name, "LAYER:", digest, "ERROR:", err)
+				continue
 			}
-		} else {
-			deletes.schedule(r.layerLinkPath(digest), digestReferenceSize)
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *repositoryData) sweep() error {
+	for name, t := range r.tags {
+		err := t.sweep()
+		if err != nil {
+			if *softErrors {
+				logrus.Errorln("SWEEP:", r.name, "TAG:", name, "ERROR:", err)
+				continue
+			}
+			return err
+		}
+	}
+
+	for revision, used := range r.manifests {
+		if used > 0 {
+			continue
+		}
+
+		err := deleteFile(r.manifestRevisionPath(revision), digestReferenceSize)
+		if err != nil {
+			if *softErrors {
+				logrus.Errorln("SWEEP:", r.name, "MANIFEST:", revision, "ERROR:", err)
+				continue
+			}
+			return err
+		}
+	}
+
+	for revision, signatures := range r.manifestSignatures {
+		err := r.sweepManifestSignatures(revision, signatures)
+		if err != nil {
+			if *softErrors {
+				logrus.Errorln("MARK:", r.name, "MANIFEST SIGNATURES:", revision, "ERROR:", err)
+				continue
+			}
+			return err
+		}
+	}
+
+	for digest, used := range r.layers {
+		if used > 0 {
+			continue
+		}
+
+		err := deleteFile(r.layerLinkPath(digest), digestReferenceSize)
+		if err != nil {
+			if *softErrors {
+				logrus.Errorln("MARK:", r.name, "LAYER:", digest, "ERROR:", err)
+				continue
+			}
+			return err
 		}
 	}
 
@@ -398,13 +465,30 @@ func (r repositoriesData) walk() error {
 	return jg.Finish()
 }
 
-func (r repositoriesData) mark(blobs blobsData, deletes *deletesData) error {
+func (r repositoriesData) mark(blobs blobsData) error {
 	jg := jobsRunner.group()
 
 	for _, repository_ := range r {
 		repository := repository_
 		jg.Dispatch(func() error {
-			return repository.mark(blobs, deletes)
+			return repository.mark(blobs)
+		})
+	}
+
+	err := jg.Finish()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r repositoriesData) sweep() error {
+	jg := jobsRunner.group()
+
+	for _, repository_ := range r {
+		repository := repository_
+		jg.Dispatch(func() error {
+			return repository.sweep()
 		})
 	}
 

@@ -26,23 +26,46 @@ func (t *tagData) versionLinkPath(version digest) string {
 	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "index", version.path(), "link")
 }
 
-func (t *tagData) mark(blobs blobsData, deletes *deletesData) error {
+func (t *tagData) mark(blobs blobsData) error {
 	if t.current.valid() {
 		t.repository.markManifest(t.current)
-	} else {
-		deletes.schedule(t.currentLinkPath(), digestReferenceSize)
 	}
 
 	for _, version := range t.versions {
-		if version != t.current {
-			if *deleteOldTagVersions {
-				deletes.schedule(t.versionLinkPath(version), digestReferenceSize)
-			} else {
-				t.repository.markManifest(version)
-			}
+		if version == t.current {
+			continue
+		}
+
+		if *deleteOldTagVersions {
+			continue
+		}
+
+		t.repository.markManifest(version)
+	}
+
+	return nil
+}
+
+func (t *tagData) sweep() error {
+	if !t.current.valid() {
+		err := deleteFile(t.currentLinkPath(), digestReferenceSize)
+		if err != nil {
+			return err
 		}
 	}
 
+	for _, version := range t.versions {
+		if version == t.current {
+			continue
+		}
+
+		if *deleteOldTagVersions {
+			err := deleteFile(t.versionLinkPath(version), digestReferenceSize)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

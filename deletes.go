@@ -1,71 +1,55 @@
 package main
 
 import (
+	"flag"
 	"path/filepath"
-	"sync"
+	"sync/atomic"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/dustin/go-humanize"
 )
 
 var (
-	deletedLinks    int
-	deletedBlobs    int
-	deletedOther    int
+	deletedLinks    int32
+	deletedBlobs    int32
+	deletedOther    int32
 	deletedBlobSize int64
 )
 
-type deletesData struct {
-	files []string
-}
+var (
+	delete     = flag.Bool("delete", false, "Delete data, instead of dry run")
+	softDelete = flag.Bool("soft-delete", true, "When deleting, do not remove, but move to backup/ folder")
+)
 
-var deletesLock sync.Mutex
-
-func (d *deletesData) schedule(path string, size int64) {
-	deletesLock.Lock()
-	defer deletesLock.Unlock()
-
+func deleteFile(path string, size int64) error {
 	logrus.Infoln("DELETE", path, size)
 	name := filepath.Base(path)
 	if name == "link" {
-		deletedLinks++
+		atomic.AddInt32(&deletedLinks, 1)
 	} else if name == "data" {
-		deletedBlobs++
+		atomic.AddInt32(&deletedBlobs, 1)
 	} else {
-		deletedOther++
+		atomic.AddInt32(&deletedOther, 1)
 	}
-	deletedBlobSize += size
-	d.files = append(d.files, path)
+
+	atomic.AddInt64(&deletedBlobSize, size)
+
+	if !*delete {
+		// Do not delete, only write
+		return nil
+	}
+
+	if *softDelete {
+		return currentStorage.Move(path, filepath.Join("backup", path))
+	} else {
+		return currentStorage.Delete(path)
+	}
 }
 
-func (d *deletesData) info() {
+func deletesInfo() {
 	logrus.Warningln("DELETEABLE INFO:", deletedLinks, "links,",
 		deletedBlobs, "blobs,",
 		deletedOther, "other,",
 		humanize.Bytes(uint64(deletedBlobSize)),
 	)
-}
-
-func (d *deletesData) run(softDelete bool) {
-	jg := jobsRunner.group()
-
-	for _, path_ := range d.files {
-		path := path_
-		jg.Dispatch(func() error {
-			if softDelete {
-				err := currentStorage.Move(path, filepath.Join("backup", path))
-				if err != nil {
-					logrus.Fatalln(err)
-				}
-			} else {
-				err := currentStorage.Delete(path)
-				if err != nil {
-					logrus.Fatalln(err)
-				}
-			}
-			return nil
-		})
-	}
-
-	jg.Finish()
 }

@@ -60,12 +60,25 @@ func (b blobsData) size(digest digest) int64 {
 	return 0
 }
 
-func (b blobsData) sweep(deletes *deletesData) {
-	for _, blob := range b {
-		if blob.references == 0 {
-			deletes.schedule(blob.path(), blob.size)
-		}
+func (b blobsData) sweep() error {
+	jg := jobsRunner.group()
+
+	for _, blob_ := range b {
+		blob := blob_
+		jg.Dispatch(func() error {
+			if blob.references > 0 {
+				return nil
+			}
+
+			err := deleteFile(blob.path(), blob.size)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	}
+
+	return jg.Finish()
 }
 
 func (b blobsData) addBlob(segments []string, info fileInfo) error {

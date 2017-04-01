@@ -12,8 +12,6 @@ import (
 var (
 	debug            = flag.Bool("debug", false, "Print debug messages")
 	verbose          = flag.Bool("verbose", true, "Print verbose messages")
-	delete           = flag.Bool("delete", false, "Delete data, instead of dry run")
-	softDelete       = flag.Bool("soft-delete", true, "When deleting, do not remove, but move to backup/ folder")
 	storage          = flag.String("storage", "", "Storage type to use: filesystem or s3")
 	jobs             = flag.Int("jobs", 10, "Number of concurrent jobs to execute")
 	parallelWalkJobs = flag.Int("parallel-walk-jobs", 10, "Number of concurrent parallel walk jobs to execute")
@@ -57,7 +55,6 @@ func main() {
 
 	blobs := make(blobsData)
 	repositories := make(repositoriesData)
-	deletes := new(deletesData)
 
 	jobsRunner.run(*jobs)
 	parallelWalkRunner.run(*parallelWalkJobs)
@@ -100,22 +97,26 @@ func main() {
 	wg.Wait()
 
 	logrus.Infoln("Marking REPOSITORIES...")
-	err = repositories.mark(blobs, deletes)
+	err = repositories.mark(blobs)
+	if err != nil {
+		logErrorln(err)
+	}
+
+	logrus.Infoln("Sweeping REPOSITORIES...")
+	err = repositories.sweep()
 	if err != nil {
 		logErrorln(err)
 	}
 
 	logrus.Infoln("Sweeping BLOBS...")
-	blobs.sweep(deletes)
-
-	if *delete {
-		logrus.Infoln("Deleting...")
-		deletes.run(*softDelete)
+	err = blobs.sweep()
+	if err != nil {
+		logErrorln(err)
 	}
 
 	logrus.Infoln("Summary...")
 	repositories.info(blobs)
 	blobs.info()
-	deletes.info()
+	deletesInfo()
 	currentStorage.Info()
 }
