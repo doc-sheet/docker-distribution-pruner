@@ -13,17 +13,6 @@ import (
 
 var parallelBlobWalk = flag.Bool("parallel-blob-walk", true, "Allow to use parallel blob walker")
 
-type blobData struct {
-	name       digest
-	size       int64
-	references int64
-	etag       string
-}
-
-func (b *blobData) path() string {
-	return filepath.Join("blobs", b.name.scopedPath(), "data")
-}
-
 type blobsData map[digest]*blobData
 
 var blobsLock sync.Mutex
@@ -65,7 +54,7 @@ func (b blobsData) sweep() error {
 
 	for _, blob_ := range b {
 		blob := blob_
-		jg.Dispatch(func() error {
+		jg.dispatch(func() error {
 			if blob.references > 0 {
 				return nil
 			}
@@ -78,7 +67,7 @@ func (b blobsData) sweep() error {
 		})
 	}
 
-	return jg.Finish()
+	return jg.finish()
 }
 
 func (b blobsData) addBlob(segments []string, info fileInfo) error {

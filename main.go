@@ -19,6 +19,11 @@ var (
 	softErrors       = flag.Bool("soft-errors", false, "Print errors, but do not fail")
 )
 
+var (
+	jobsRunner         = make(jobsData)
+	parallelWalkRunner = make(jobsData)
+)
+
 func logErrorln(args ...interface{}) {
 	if *softErrors {
 		logrus.Errorln(args...)

@@ -34,7 +34,7 @@ func parallelWalk(rootPath string, fn func(string) error) error {
 			return nil
 		}
 
-		pwg.Dispatch(func() error {
+		pwg.dispatch(func() error {
 			walkPath := filepath.Join(rootPath, listPath)
 			return fn(walkPath)
 		})
@@ -44,5 +44,5 @@ func parallelWalk(rootPath string, fn func(string) error) error {
 		return err
 	}
 
-	return pwg.Finish()
+	return pwg.finish()
 }
