@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,20 +8,15 @@ import (
 )
 
 type fsStorage struct {
-}
-
-var fsRootDir = flag.String("fs-root-dir", "examples/registry", "root directory")
-
-func newFsStorage() storageObject {
-	return &fsStorage{}
+	*distributionStorageFilesystem
 }
 
 func (f *fsStorage) fullPath(path string) string {
-	return filepath.Join(*fsRootDir, "docker", "registry", "v2", path)
+	return filepath.Join(f.RootDirectory, "docker", "registry", "v2", path)
 }
 
 func (f *fsStorage) backupPath(path string) string {
-	return filepath.Join(*fsRootDir, "docker_backup", "registry", "v2", path)
+	return filepath.Join(f.RootDirectory, "docker_backup", "registry", "v2", path)
 }
 
 func (f *fsStorage) Walk(rootDir string, baseDir string, fn walkFunc) error {
@@ -109,4 +103,8 @@ func (f *fsStorage) Move(path, newPath string) error {
 }
 
 func (f *fsStorage) Info() {
+}
+
+func newFilesystemStorage(config *distributionStorageFilesystem) (storageObject, error) {
+	return &fsStorage{config}, nil
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
@@ -17,6 +18,7 @@ import (
 const listMax = 1000
 
 type s3Storage struct {
+	*distributionStorageS3
 	S3                *s3.S3
 	apiCalls          int64
 	expensiveApiCalls int64
@@ -25,28 +27,14 @@ type s3Storage struct {
 	cacheMiss         int64
 }
 
-var s3RootDir = flag.String("s3-root-dir", "", "s3 root directory")
-var s3Bucket = flag.String("s3-bucket", "", "s3 bucket")
-var s3Region = flag.String("s3-region", "us-east-1", "s3 region")
 var s3CacheStorage = flag.String("s3-storage-cache", "tmp-cache", "s3 cache")
 
-func newS3Storage() storageObject {
-	sess, err := session.NewSession()
-	if err != nil {
-		panic(err)
-	}
-
-	return &s3Storage{
-		S3: s3.New(sess, aws.NewConfig().WithRegion(*s3Region)),
-	}
-}
-
 func (f *s3Storage) fullPath(path string) string {
-	return filepath.Join(*s3RootDir, "docker", "registry", "v2", path)
+	return filepath.Join(f.RootDirectory, "docker", "registry", "v2", path)
 }
 
 func (f *s3Storage) backupPath(path string) string {
-	return filepath.Join(*s3RootDir, "docker-backup", "registry", "v2", path)
+	return filepath.Join(f.RootDirectory, "docker-backup", "registry", "v2", path)
 }
 
 func (f *s3Storage) Walk(path string, baseDir string, fn walkFunc) error {
@@ -62,7 +50,7 @@ func (f *s3Storage) Walk(path string, baseDir string, fn walkFunc) error {
 
 	atomic.AddInt64(&f.apiCalls, 1)
 	resp, err := f.S3.ListObjects(&s3.ListObjectsInput{
-		Bucket:  s3Bucket,
+		Bucket:  aws.String(f.Bucket),
 		Prefix:  aws.String(path),
 		MaxKeys: aws.Int64(listMax),
 	})
@@ -104,7 +92,7 @@ func (f *s3Storage) Walk(path string, baseDir string, fn walkFunc) error {
 		if *resp.IsTruncated {
 			atomic.AddInt64(&f.apiCalls, 1)
 			resp, err = f.S3.ListObjects(&s3.ListObjectsInput{
-				Bucket:  s3Bucket,
+				Bucket:  aws.String(f.Bucket),
 				Prefix:  aws.String(path),
 				MaxKeys: aws.Int64(listMax),
 				Marker:  aws.String(lastKey),
@@ -128,7 +116,7 @@ func (f *s3Storage) List(path string, fn walkFunc) error {
 
 	atomic.AddInt64(&f.apiCalls, 1)
 	resp, err := f.S3.ListObjects(&s3.ListObjectsInput{
-		Bucket:    s3Bucket,
+		Bucket:    aws.String(f.Bucket),
 		Prefix:    aws.String(path),
 		Delimiter: aws.String("/"),
 		MaxKeys:   aws.Int64(listMax),
@@ -186,7 +174,7 @@ func (f *s3Storage) List(path string, fn walkFunc) error {
 		if *resp.IsTruncated {
 			atomic.AddInt64(&f.apiCalls, 1)
 			resp, err = f.S3.ListObjects(&s3.ListObjectsInput{
-				Bucket:    s3Bucket,
+				Bucket:    aws.String(f.Bucket),
 				Prefix:    aws.String(path),
 				MaxKeys:   aws.Int64(listMax),
 				Delimiter: aws.String("/"),
@@ -222,7 +210,7 @@ func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
 
 	atomic.AddInt64(&f.apiCalls, 1)
 	resp, err := f.S3.GetObject(&s3.GetObjectInput{
-		Bucket: s3Bucket,
+		Bucket: aws.String(f.Bucket),
 		Key:    aws.String(f.fullPath(path)),
 	})
 
@@ -247,7 +235,7 @@ func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
 func (f *s3Storage) Delete(path string) error {
 	atomic.AddInt64(&f.expensiveApiCalls, 1)
 	_, err := f.S3.DeleteObject(&s3.DeleteObjectInput{
-		Bucket: s3Bucket,
+		Bucket: aws.String(f.Bucket),
 		Key:    aws.String(f.fullPath(path)),
 	})
 	return err
@@ -256,8 +244,8 @@ func (f *s3Storage) Delete(path string) error {
 func (f *s3Storage) Move(path, newPath string) error {
 	atomic.AddInt64(&f.expensiveApiCalls, 1)
 	_, err := f.S3.CopyObject(&s3.CopyObjectInput{
-		CopySource: aws.String("/" + *s3Bucket + "/" + f.fullPath(path)),
-		Bucket:     s3Bucket,
+		CopySource: aws.String("/" + f.Bucket + "/" + f.fullPath(path)),
+		Bucket:     aws.String(f.Bucket),
 		Key:        aws.String(f.backupPath(newPath)),
 	})
 	if err != nil {
@@ -269,4 +257,22 @@ func (f *s3Storage) Move(path, newPath string) error {
 func (f *s3Storage) Info() {
 	logrus.Infoln("S3 INFO: API calls/expensive:", f.apiCalls, f.expensiveApiCalls,
 		"Cache (hit/miss/error):", f.cacheHits, f.cacheMiss, f.cacheError)
+}
+
+func newS3Storage(config *distributionStorageS3) (storageObject, error) {
+	awsConfig := aws.NewConfig()
+	awsConfig.Endpoint = config.RegionEndpoint
+	awsConfig.Region = config.Region
+	awsConfig.Credentials = credentials.NewStaticCredentials(config.AccessKey, config.SecretKey, "")
+
+	sess, err := session.NewSession()
+	if err != nil {
+		return nil, err
+	}
+
+	storage := &s3Storage{
+		distributionStorageS3: config,
+		S3: s3.New(sess, awsConfig),
+	}
+	return storage, err
 }

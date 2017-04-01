@@ -24,37 +24,26 @@ By default it runs in dry run mode (no changes). When run with `-delete` it will
 
 If you run `-delete -soft-delete=false` you will remove data forever.
 
-### Run (filesystem)
+### Run
 
 Dry run:
 
 ```bash
-docker-distribution-pruner -storage=filesystem -fs-root-dir=/path/to/registry/storage
+docker-distribution-pruner -config=/path/to/registry/configuration
 ```
 
 Reclaim disk space:
 
 ```bash
-docker-distribution-pruner -storage=filesystem -fs-root-dir=/path/to/registry/storage -delete
+docker-distribution-pruner -config=/path/to/registry/configuration -delete
 ```
 
-### Run (s3)
+### GitLab Omnibus
 
-Configure credentials:
-```
-aws configure
-```
-
-Dry run:
+Run:
 
 ```bash
-docker-distribution-pruner -storage=s3 -s3-bucket=my-bucket
-```
-
-Reclaim disk space:
-
-```bash
-docker-distribution-pruner -storage=s3 -s3-bucket=my-bucket -delete
+docker-distribution-pruner -config=/var/opt/gitlab/registry/config.yml
 ```
 
 ### S3 effectiveness
@@ -99,14 +88,14 @@ It is highly not advised to change these options as it can leave left-overs in r
 
 ```
 Usage of docker-distribution-pruner:
+  -config string
+    	Path to registry config file
   -debug
     	Print debug messages
   -delete
     	Delete data, instead of dry run
   -delete-old-tag-versions
     	Delete old tag versions (default true)
-  -fs-root-dir string
-    	root directory (default "examples/registry")
   -ignore-blobs
     	Ignore blobs processing and recycling
   -jobs int
@@ -119,20 +108,12 @@ Usage of docker-distribution-pruner:
     	Number of concurrent parallel walk jobs to execute (default 10)
   -repository-csv-output string
     	File to which CSV will be written with all metrics (default "repositories.csv")
-  -s3-bucket string
-    	s3 bucket
-  -s3-region string
-    	s3 region (default "us-east-1")
-  -s3-root-dir string
-    	s3 root directory
   -s3-storage-cache string
     	s3 cache (default "tmp-cache")
   -soft-delete
     	When deleting, do not remove, but move to backup/ folder (default true)
   -soft-errors
     	Print errors, but do not fail
-  -storage string
-    	Storage type to use: filesystem or s3
   -verbose
     	Print verbose messages (default true)
 ```
