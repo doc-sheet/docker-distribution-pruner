@@ -14,10 +14,7 @@ compile:
         - export CGO_ENABLED=0
         - GOOS=linux go get
         - GOOS=linux go build -ldflags "-s -w"
-        - GOOS=windows go get
-        - GOOS=windows go build -ldflags "-s -w"
         - chmod +x docker-distribution-pruner
     artifacts:
         paths:
             - docker-distribution-pruner
-            - docker-distribution-pruner.exe
