@@ -49,23 +49,25 @@ func (r repositoriesData) process(segments []string, info fileInfo) error {
 	return fmt.Errorf("unparseable path: %v", segments)
 }
 
+func (r repositoriesData) walkFile(path string, info fileInfo, err error) error {
+	err = r.process(strings.Split(path, "/"), info)
+
+	if err != nil {
+		logrus.Errorln("REPOSITORY:", path, ":", err)
+		if *softErrors {
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (r repositoriesData) walkPath(walkPath string, jg *jobGroup) error {
 	logrus.Infoln("REPOSITORIES DIR:", walkPath)
 	return currentStorage.Walk(walkPath, "repositories", func(path string, info fileInfo, err error) error {
 		jg.dispatch(func() error {
-			err = r.process(strings.Split(path, "/"), info)
-			if err != nil {
-				if err != nil {
-					logrus.Errorln("REPOSITORY:", path, ":", err)
-					if *softErrors {
-						return nil
-					}
-				} else {
-					logrus.Infoln("REPOSITORY:", path, ":", err)
-				}
-				return err
-			}
-			return nil
+			return r.walkFile(path, info, err)
 		})
 		return nil
 	})
@@ -93,14 +95,17 @@ func (r repositoriesData) walk(parallel bool) error {
 	return jg.finish()
 }
 
+func (r repositoriesData) markRepository(jg *jobGroup, blobs blobsData, repository *repositoryData) {
+	jg.dispatch(func() error {
+		return repository.mark(blobs)
+	})
+}
+
 func (r repositoriesData) mark(blobs blobsData) error {
 	jg := jobsRunner.group()
 
-	for _, repository_ := range r {
-		repository := repository_
-		jg.dispatch(func() error {
-			return repository.mark(blobs)
-		})
+	for _, repository := range r {
+		r.markRepository(jg, blobs, repository)
 	}
 
 	err := jg.finish()
@@ -110,14 +115,17 @@ func (r repositoriesData) mark(blobs blobsData) error {
 	return nil
 }
 
+func (r repositoriesData) sweepRepository(jg *jobGroup, repository *repositoryData) {
+	jg.dispatch(func() error {
+		return repository.sweep()
+	})
+}
+
 func (r repositoriesData) sweep() error {
 	jg := jobsRunner.group()
 
-	for _, repository_ := range r {
-		repository := repository_
-		jg.dispatch(func() error {
-			return repository.sweep()
-		})
+	for _, repository := range r {
+		r.sweepRepository(jg, repository)
 	}
 
 	err := jg.finish()

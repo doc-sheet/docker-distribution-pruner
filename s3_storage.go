@@ -21,8 +21,8 @@ type s3Storage struct {
 	*distributionStorageS3
 	S3                *s3.S3
 	apiCalls          int64
-	expensiveApiCalls int64
-	freeApiCalls      int64
+	expensiveAPICalls int64
+	freeAPICalls      int64
 	cacheHits         int64
 	cacheError        int64
 	cacheMiss         int64
@@ -200,9 +200,9 @@ func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
 			if compareEtag(file, etag) {
 				atomic.AddInt64(&f.cacheHits, 1)
 				return file, nil
-			} else {
-				atomic.AddInt64(&f.cacheError, 1)
 			}
+
+			atomic.AddInt64(&f.cacheError, 1)
 		} else if os.IsNotExist(err) {
 			atomic.AddInt64(&f.cacheMiss, 1)
 			logrus.Infoln("CACHE MISS:", path)
@@ -234,7 +234,7 @@ func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
 }
 
 func (f *s3Storage) Delete(path string) error {
-	atomic.AddInt64(&f.freeApiCalls, 1)
+	atomic.AddInt64(&f.freeAPICalls, 1)
 	_, err := f.S3.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(f.Bucket),
 		Key:    aws.String(f.fullPath(path)),
@@ -243,7 +243,7 @@ func (f *s3Storage) Delete(path string) error {
 }
 
 func (f *s3Storage) Move(path, newPath string) error {
-	atomic.AddInt64(&f.expensiveApiCalls, 1)
+	atomic.AddInt64(&f.expensiveAPICalls, 1)
 	_, err := f.S3.CopyObject(&s3.CopyObjectInput{
 		CopySource: aws.String("/" + f.Bucket + "/" + f.fullPath(path)),
 		Bucket:     aws.String(f.Bucket),
@@ -256,7 +256,7 @@ func (f *s3Storage) Move(path, newPath string) error {
 }
 
 func (f *s3Storage) Info() {
-	logrus.Infoln("S3 INFO: API calls/expensive/free:", f.apiCalls, f.expensiveApiCalls, f.freeApiCalls,
+	logrus.Infoln("S3 INFO: API calls/expensive/free:", f.apiCalls, f.expensiveAPICalls, f.freeAPICalls,
 		"Cache (hit/miss/error):", f.cacheHits, f.cacheMiss, f.cacheError)
 }
 

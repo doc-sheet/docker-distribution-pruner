@@ -71,7 +71,6 @@ func (f *fsStorage) List(rootDir string, fn walkFunc) error {
 		}
 
 		fi := fileInfo{fullPath: fullPath, size: info.Size(), directory: info.IsDir()}
-
 		if info.IsDir() {
 			err = fn(path, fi, err)
 			if err != nil {
@@ -79,11 +78,10 @@ func (f *fsStorage) List(rootDir string, fn walkFunc) error {
 			}
 
 			return filepath.SkipDir
-		} else {
-
-			fi := fileInfo{fullPath: fullPath, size: info.Size()}
-			return fn(path, fi, err)
 		}
+
+		fi = fileInfo{fullPath: fullPath, size: info.Size()}
+		return fn(path, fi, err)
 	})
 }
 

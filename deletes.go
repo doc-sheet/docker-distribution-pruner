@@ -35,9 +35,9 @@ func deleteFile(path string, size int64) error {
 
 	if *softDelete {
 		return currentStorage.Move(path, filepath.Join("backup", path))
-	} else {
-		return currentStorage.Delete(path)
 	}
+
+	return currentStorage.Delete(path)
 }
 
 func deletesInfo() {

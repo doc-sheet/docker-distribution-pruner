@@ -46,22 +46,25 @@ func (b blobsData) size(digest digest) int64 {
 	return 0
 }
 
+func (b blobsData) sweepBlob(jg *jobGroup, blob *blobData) {
+	jg.dispatch(func() error {
+		if blob.references > 0 {
+			return nil
+		}
+
+		err := deleteFile(blob.path(), blob.size)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 func (b blobsData) sweep() error {
 	jg := jobsRunner.group()
 
-	for _, blob_ := range b {
-		blob := blob_
-		jg.dispatch(func() error {
-			if blob.references > 0 {
-				return nil
-			}
-
-			err := deleteFile(blob.path(), blob.size)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
+	for _, blob := range b {
+		b.sweepBlob(jg, blob)
 	}
 
 	return jg.finish()
