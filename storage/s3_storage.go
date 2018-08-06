@@ -1,7 +1,6 @@
-package main
+package storage
 
 import (
-	"flag"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,12 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"gitlab.com/gitlab-org/docker-distribution-pruner/flags"
 )
 
 const listMax = 1000
 
 type s3Storage struct {
-	*distributionStorageS3
+	*DistributionStorageS3
 	S3                *s3.S3
 	apiCalls          int64
 	expensiveAPICalls int64
@@ -28,8 +28,6 @@ type s3Storage struct {
 	cacheMiss         int64
 }
 
-var s3CacheStorage = flag.String("s3-storage-cache", "tmp-cache", "s3 cache")
-
 func (f *s3Storage) fullPath(path string) string {
 	return filepath.Join(f.RootDirectory, "docker", "registry", "v2", path)
 }
@@ -38,7 +36,7 @@ func (f *s3Storage) backupPath(path string) string {
 	return filepath.Join(f.RootDirectory, "docker-backup", "registry", "v2", path)
 }
 
-func (f *s3Storage) Walk(path string, baseDir string, fn walkFunc) error {
+func (f *s3Storage) Walk(path string, baseDir string, fn WalkFunc) error {
 	path = f.fullPath(path)
 	if path != "/" && path[len(path)-1] != '/' {
 		path = path + "/"
@@ -78,11 +76,11 @@ func (f *s3Storage) Walk(path string, baseDir string, fn walkFunc) error {
 				continue
 			}
 
-			fi := fileInfo{
-				fullPath:     *key.Key,
-				size:         *key.Size,
-				etag:         *key.ETag,
-				lastModified: *key.LastModified,
+			fi := FileInfo{
+				FullPath:     *key.Key,
+				Size:         *key.Size,
+				Etag:         *key.ETag,
+				LastModified: *key.LastModified,
 			}
 			err = fn(keyPath, fi, err)
 			if err != nil {
@@ -109,7 +107,7 @@ func (f *s3Storage) Walk(path string, baseDir string, fn walkFunc) error {
 	return nil
 }
 
-func (f *s3Storage) List(path string, fn walkFunc) error {
+func (f *s3Storage) List(path string, fn WalkFunc) error {
 	path = f.fullPath(path)
 	if path != "/" && path[len(path)-1] != '/' {
 		path = path + "/"
@@ -137,12 +135,12 @@ func (f *s3Storage) List(path string, fn walkFunc) error {
 				continue
 			}
 
-			fi := fileInfo{
-				fullPath:     *key.Key,
-				size:         *key.Size,
-				etag:         *key.ETag,
-				lastModified: *key.LastModified,
-				directory:    strings.HasSuffix(*key.Key, "/"),
+			fi := FileInfo{
+				FullPath:     *key.Key,
+				Size:         *key.Size,
+				Etag:         *key.ETag,
+				LastModified: *key.LastModified,
+				Directory:    strings.HasSuffix(*key.Key, "/"),
 			}
 
 			err = fn(keyPath, fi, err)
@@ -161,9 +159,9 @@ func (f *s3Storage) List(path string, fn walkFunc) error {
 				continue
 			}
 
-			fi := fileInfo{
-				fullPath:  *commonPrefix.Prefix,
-				directory: true,
+			fi := FileInfo{
+				FullPath:  *commonPrefix.Prefix,
+				Directory: true,
 			}
 
 			err = fn(prefixPath, fi, err)
@@ -193,8 +191,8 @@ func (f *s3Storage) List(path string, fn walkFunc) error {
 }
 
 func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
-	cachePath := filepath.Join(*s3CacheStorage, path)
-	if etag != "" && *s3CacheStorage != "" {
+	cachePath := filepath.Join(*flags.S3CacheStorage, path)
+	if etag != "" && *flags.S3CacheStorage != "" {
 		file, err := ioutil.ReadFile(cachePath)
 		if err == nil {
 			if compareEtag(file, etag) {
@@ -225,7 +223,7 @@ func (f *s3Storage) Read(path string, etag string) ([]byte, error) {
 		return nil, err
 	}
 
-	if etag != "" && *s3CacheStorage != "" {
+	if etag != "" && *flags.S3CacheStorage != "" {
 		os.MkdirAll(filepath.Dir(cachePath), 0700)
 		ioutil.WriteFile(cachePath, data, 0600)
 	}
@@ -260,7 +258,7 @@ func (f *s3Storage) Info() {
 		"Cache (hit/miss/error):", f.cacheHits, f.cacheMiss, f.cacheError)
 }
 
-func newS3Storage(config *distributionStorageS3) (storageObject, error) {
+func newS3Storage(config *DistributionStorageS3) (StorageObject, error) {
 	awsConfig := aws.NewConfig()
 	awsConfig.Endpoint = config.RegionEndpoint
 	awsConfig.Region = config.Region
@@ -272,7 +270,7 @@ func newS3Storage(config *distributionStorageS3) (storageObject, error) {
 	}
 
 	storage := &s3Storage{
-		distributionStorageS3: config,
+		DistributionStorageS3: config,
 		S3: s3.New(sess, awsConfig),
 	}
 	return storage, err

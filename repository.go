@@ -227,7 +227,7 @@ func (r *repositoryData) sweep() error {
 	return nil
 }
 
-func (r *repositoryData) addLayer(args []string, info fileInfo) error {
+func (r *repositoryData) addLayer(args []string, info FileInfo) error {
 	// /test/_layers/sha256/579c7fc9b0d60a19706cd6c1573fec9a28fa758bfe1ece86a1e5c68ad6f4e9d1/link
 	link, err := analyzeLink(args)
 	if err != nil {
@@ -246,7 +246,7 @@ func (r *repositoryData) addLayer(args []string, info fileInfo) error {
 	return nil
 }
 
-func (r *repositoryData) addManifestRevision(args []string, info fileInfo) error {
+func (r *repositoryData) addManifestRevision(args []string, info FileInfo) error {
 	// /test2/_manifests/revisions/sha256/708519982eae159899e908639f5fa22d23d247ad923f6e6ad6128894c5d497a0/link
 	link, err := analyzeLink(args)
 	if err == nil {
@@ -278,7 +278,7 @@ func (r *repositoryData) addManifestRevision(args []string, info fileInfo) error
 	return err
 }
 
-func (r *repositoryData) addTag(args []string, info fileInfo) error {
+func (r *repositoryData) addTag(args []string, info FileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/current/link
 	//INFO[0000] /test2/_manifests/tags/latest/index/sha256/af8338145978acd626bfb9e863fa446bebfc9f2660bee1af99ed29efc48d73b4/link
 
@@ -292,7 +292,7 @@ func (r *repositoryData) addTag(args []string, info fileInfo) error {
 	}
 }
 
-func (r *repositoryData) addManifest(args []string, info fileInfo) error {
+func (r *repositoryData) addManifest(args []string, info FileInfo) error {
 	//INFO[0000] /test2/_manifests/revisions/sha256/708519982eae159899e908639f5fa22d23d247ad923f6e6ad6128894c5d497a0/link
 	//INFO[0000] /test2/_manifests/revisions/sha256/af8338145978acd626bfb9e863fa446bebfc9f2660bee1af99ed29efc48d73b4/link
 	//INFO[0000] /test2/_manifests/tags/latest/current/link
@@ -309,7 +309,7 @@ func (r *repositoryData) addManifest(args []string, info fileInfo) error {
 	}
 }
 
-func (r *repositoryData) addUpload(args []string, info fileInfo) error {
+func (r *repositoryData) addUpload(args []string, info FileInfo) error {
 	// /test/_uploads/f82d2b61-f130-4be5-b4f6-92cb18c7cf89/startedat
 	// /test/_uploads/f82d2b61-f130-4be5-b4f6-92cb18c7cf89/hashstates/sha256/0
 	if len(args) < 1 {

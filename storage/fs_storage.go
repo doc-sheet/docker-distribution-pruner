@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"io/ioutil"
@@ -8,7 +8,7 @@ import (
 )
 
 type fsStorage struct {
-	*distributionStorageFilesystem
+	*DistributionStorageFilesystem
 }
 
 func (f *fsStorage) fullPath(path string) string {
@@ -19,7 +19,7 @@ func (f *fsStorage) backupPath(path string) string {
 	return filepath.Join(f.RootDirectory, "docker_backup", "registry", "v2", path)
 }
 
-func (f *fsStorage) Walk(rootDir string, baseDir string, fn walkFunc) error {
+func (f *fsStorage) Walk(rootDir string, baseDir string, fn WalkFunc) error {
 	rootDir, err := filepath.Abs(f.fullPath(rootDir))
 	if err != nil {
 		return nil
@@ -47,12 +47,12 @@ func (f *fsStorage) Walk(rootDir string, baseDir string, fn walkFunc) error {
 			return nil
 		}
 
-		fi := fileInfo{fullPath: fullPath, size: info.Size()}
+		fi := FileInfo{FullPath: fullPath, Size: info.Size()}
 		return fn(path, fi, err)
 	})
 }
 
-func (f *fsStorage) List(rootDir string, fn walkFunc) error {
+func (f *fsStorage) List(rootDir string, fn WalkFunc) error {
 	rootDir, err := filepath.Abs(f.fullPath(rootDir))
 	if err != nil {
 		return nil
@@ -70,7 +70,7 @@ func (f *fsStorage) List(rootDir string, fn walkFunc) error {
 			return nil
 		}
 
-		fi := fileInfo{fullPath: fullPath, size: info.Size(), directory: info.IsDir()}
+		fi := FileInfo{FullPath: fullPath, Size: info.Size(), Directory: info.IsDir()}
 		if info.IsDir() {
 			err = fn(path, fi, err)
 			if err != nil {
@@ -80,7 +80,7 @@ func (f *fsStorage) List(rootDir string, fn walkFunc) error {
 			return filepath.SkipDir
 		}
 
-		fi = fileInfo{fullPath: fullPath, size: info.Size()}
+		fi = FileInfo{FullPath: fullPath, Size: info.Size()}
 		return fn(path, fi, err)
 	})
 }
@@ -103,6 +103,6 @@ func (f *fsStorage) Move(path, newPath string) error {
 func (f *fsStorage) Info() {
 }
 
-func newFilesystemStorage(config *distributionStorageFilesystem) (storageObject, error) {
+func newFilesystemStorage(config *DistributionStorageFilesystem) (StorageObject, error) {
 	return &fsStorage{config}, nil
 }

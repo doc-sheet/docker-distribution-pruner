@@ -29,7 +29,7 @@ func (r repositoriesData) get(path []string) *repositoryData {
 	return repository
 }
 
-func (r repositoriesData) process(segments []string, info fileInfo) error {
+func (r repositoriesData) process(segments []string, info FileInfo) error {
 	for idx := 0; idx < len(segments)-1; idx++ {
 		repository := segments[0:idx]
 		args := segments[idx+1:]
@@ -49,7 +49,7 @@ func (r repositoriesData) process(segments []string, info fileInfo) error {
 	return fmt.Errorf("unparseable path: %v", segments)
 }
 
-func (r repositoriesData) walkFile(path string, info fileInfo, err error) error {
+func (r repositoriesData) walkFile(path string, info FileInfo, err error) error {
 	err = r.process(strings.Split(path, "/"), info)
 
 	if err != nil {
@@ -65,7 +65,7 @@ func (r repositoriesData) walkFile(path string, info fileInfo, err error) error 
 
 func (r repositoriesData) walkPath(walkPath string, jg *jobGroup) error {
 	logrus.Infoln("REPOSITORIES DIR:", walkPath)
-	return currentStorage.Walk(walkPath, "repositories", func(path string, info fileInfo, err error) error {
+	return currentStorage.Walk(walkPath, "repositories", func(path string, info FileInfo, err error) error {
 		jg.dispatch(func() error {
 			return r.walkFile(path, info, err)
 		})

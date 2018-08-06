@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"errors"
@@ -7,11 +7,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type distributionStorageFilesystem struct {
+type DistributionStorageFilesystem struct {
 	RootDirectory string `yaml:"rootdirectory"`
 }
 
-type distributionStorageS3 struct {
+type DistributionStorageS3 struct {
 	AccessKey      string  `yaml:"accesskey"`
 	SecretKey      string  `yaml:"secretkey"`
 	Bucket         string  `yaml:"bucket"`
@@ -20,23 +20,23 @@ type distributionStorageS3 struct {
 	RootDirectory  string  `yaml:"rootdirectory"`
 }
 
-type distributionStorage struct {
-	Filesystem *distributionStorageFilesystem `yaml:"filesystem"`
-	S3         *distributionStorageS3         `yaml:"s3"`
+type DistributionStorage struct {
+	Filesystem *DistributionStorageFilesystem `yaml:"filesystem"`
+	S3         *DistributionStorageS3         `yaml:"s3"`
 }
 
-type distributionConfig struct {
+type DistributionConfig struct {
 	Version string              `yaml:"version"`
-	Storage distributionStorage `yaml:"storage"`
+	Storage DistributionStorage `yaml:"storage"`
 }
 
-func storageFromConfig(configFile string) (storageObject, error) {
+func StorageFromConfig(configFile string) (StorageObject, error) {
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		return nil, err
 	}
 
-	config := &distributionConfig{}
+	config := &DistributionConfig{}
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		return nil, err

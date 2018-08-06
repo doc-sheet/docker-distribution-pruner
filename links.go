@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 )
 
@@ -44,13 +42,6 @@ func analyzeLinkSignature(args []string) (digest, digest, error) {
 	}
 
 	return link, signature, err
-}
-
-func compareEtag(data []byte, etag string) bool {
-	hash := md5.Sum(data)
-	hex := hex.EncodeToString(hash[:])
-	hex = "\"" + hex + "\""
-	return etag == hex
 }
 
 func readLink(path string, etag string) (digest, error) {

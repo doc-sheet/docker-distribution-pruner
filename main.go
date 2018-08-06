@@ -10,28 +10,6 @@ import (
 )
 
 var (
-	config = flag.String("config", "", "Path to registry config file")
-
-	ignoreBlobs = flag.Bool("ignore-blobs", false, "Ignore blobs processing and recycling")
-
-	jobs             = flag.Int("jobs", 10, "Number of concurrent jobs to execute")
-	parallelWalkJobs = flag.Int("parallel-walk-jobs", 10, "Number of concurrent parallel walk jobs to execute")
-
-	debug      = flag.Bool("debug", false, "Print debug messages")
-	verbose    = flag.Bool("verbose", true, "Print verbose messages")
-	softErrors = flag.Bool("soft-errors", false, "Print errors, but do not fail")
-
-	parallelRepositoryWalk = flag.Bool("parallel-repository-walk", false, "Allow to use parallel repository walker")
-	parallelBlobWalk       = flag.Bool("parallel-blob-walk", false, "Allow to use parallel blob walker")
-
-	repositoryCsvOutput = flag.String("repository-csv-output", "repositories.csv", "File to which CSV will be written with all metrics")
-
-	deleteOldTagVersions = flag.Bool("delete-old-tag-versions", true, "Delete old tag versions")
-	delete               = flag.Bool("delete", false, "Delete data, instead of dry run")
-	softDelete           = flag.Bool("soft-delete", true, "When deleting, do not remove, but move to backup/ folder")
-)
-
-var (
 	jobsRunner         = make(jobsData)
 	parallelWalkRunner = make(jobsData)
 )

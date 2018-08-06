@@ -66,7 +66,7 @@ func (t *tagData) sweep() error {
 	return nil
 }
 
-func (t *tagData) setCurrent(info fileInfo) error {
+func (t *tagData) setCurrent(info FileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/current/link
 
 	link, err := readLink(t.currentLinkPath(), info.etag)
@@ -79,7 +79,7 @@ func (t *tagData) setCurrent(info fileInfo) error {
 	return nil
 }
 
-func (t *tagData) addVersion(args []string, info fileInfo) error {
+func (t *tagData) addVersion(args []string, info FileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/index/sha256/af8338145978acd626bfb9e863fa446bebfc9f2660bee1af99ed29efc48d73b4/link
 
 	link, err := analyzeLink(args)

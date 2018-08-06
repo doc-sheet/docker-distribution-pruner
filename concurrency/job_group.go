@@ -1,15 +1,15 @@
-package main
+package concurrency
 
 import "sync"
 
-type jobGroup struct {
-	ch   jobsData
+type JobGroup struct {
+	ch   JobsData
 	wg   sync.WaitGroup
 	err  error
 	lock sync.Mutex
 }
 
-func (g *jobGroup) dispatch(fn func() error) {
+func (g *JobGroup) Dispatch(fn func() error) {
 	g.wg.Add(1)
 
 	g.ch <- func() {
@@ -28,7 +28,7 @@ func (g *jobGroup) dispatch(fn func() error) {
 	}
 }
 
-func (g *jobGroup) finish() error {
+func (g *JobGroup) Finish() error {
 	g.wg.Wait()
 	return g.err
 }
