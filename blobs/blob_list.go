@@ -15,13 +15,13 @@ import (
 	"gitlab.com/gitlab-org/docker-distribution-pruner/storage"
 )
 
-type BlobsData struct {
-	blobs   map[digest.Digest]*BlobData
+type BlobList struct {
+	blobs   map[digest.Digest]*Blob
 	lock    sync.RWMutex
 	storage storage.StorageObject
 }
 
-func (b *BlobsData) Mark(digest digest.Digest) error {
+func (b *BlobList) Mark(digest digest.Digest) error {
 	if *flags.IgnoreBlobs {
 		return nil
 	}
@@ -37,7 +37,7 @@ func (b *BlobsData) Mark(digest digest.Digest) error {
 	return nil
 }
 
-func (b *BlobsData) Etag(digest digest.Digest) string {
+func (b *BlobList) Etag(digest digest.Digest) string {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
@@ -48,7 +48,7 @@ func (b *BlobsData) Etag(digest digest.Digest) string {
 	return ""
 }
 
-func (b *BlobsData) Size(digest digest.Digest) int64 {
+func (b *BlobList) Size(digest digest.Digest) int64 {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
@@ -59,7 +59,15 @@ func (b *BlobsData) Size(digest digest.Digest) int64 {
 	return 0
 }
 
-func (b *BlobsData) sweepBlob(jg *concurrency.JobGroup, blob *BlobData) {
+func (b *BlobList) Path(digest digest.Digest) string {
+	return filepath.Join("blobs", digest.ScopedPath(), "data")
+}
+
+func (b *BlobList) ReadBlob(digest digest.Digest) ([]byte, error) {
+	return b.storage.Read(b.Path(digest), b.Etag(digest))
+}
+
+func (b *BlobList) sweepBlob(jg *concurrency.JobGroup, blob *Blob) {
 	jg.Dispatch(func() error {
 		if blob.References > 0 {
 			return nil
@@ -73,7 +81,7 @@ func (b *BlobsData) sweepBlob(jg *concurrency.JobGroup, blob *BlobData) {
 	})
 }
 
-func (b *BlobsData) Sweep(jobs concurrency.JobsData) error {
+func (b *BlobList) Sweep(jobs concurrency.JobsData) error {
 	jg := jobs.Group()
 
 	for _, blob := range b.blobs {
@@ -83,7 +91,7 @@ func (b *BlobsData) Sweep(jobs concurrency.JobsData) error {
 	return jg.Finish()
 }
 
-func (b *BlobsData) AddBlob(segments []string, info storage.FileInfo) error {
+func (b *BlobList) AddBlob(segments []string, info storage.FileInfo) error {
 	if len(segments) != 4 {
 		return fmt.Errorf("unparseable path: %v", segments)
 	}
@@ -104,19 +112,19 @@ func (b *BlobsData) AddBlob(segments []string, info storage.FileInfo) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
-	blob := &BlobData{
+	blob := &Blob{
 		Name: blobDigest,
 		Size: info.Size,
 		Etag: info.Etag,
 	}
 	if b.blobs == nil {
-		b.blobs = make(map[digest.Digest]*BlobData)
+		b.blobs = make(map[digest.Digest]*Blob)
 	}
 	b.blobs[blobDigest] = blob
 	return nil
 }
 
-func (b *BlobsData) walkPath(walkPath string) error {
+func (b *BlobList) walkPath(walkPath string) error {
 	logrus.Infoln("BLOBS DIR:", walkPath)
 	return b.storage.Walk(walkPath, "blobs", func(path string, info storage.FileInfo, err error) error {
 		err = b.AddBlob(strings.Split(path, "/"), info)
@@ -132,7 +140,7 @@ func (b *BlobsData) walkPath(walkPath string) error {
 	})
 }
 
-func (b *BlobsData) Walk(parallel bool) error {
+func (b *BlobList) Walk(parallel bool) error {
 	logrus.Infoln("Walking BLOBS...")
 
 	if parallel {
@@ -143,7 +151,7 @@ func (b *BlobsData) Walk(parallel bool) error {
 	return b.walkPath("blobs")
 }
 
-func (b *BlobsData) Info() {
+func (b *BlobList) Info() {
 	var blobsUsed, blobsUnused int
 	var blobsUsedSize, blobsUnusedSize int64
 

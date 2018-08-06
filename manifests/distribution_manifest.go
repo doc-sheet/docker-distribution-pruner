@@ -1,27 +1,15 @@
-package main
+package manifests
 
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
-	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest"
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
 )
-
-type manifestData struct {
-	digest  digest
-	layers  []digest
-	loaded  bool
-	loadErr error
-
-	loadLock sync.Mutex
-}
 
 func deserializeManifest(data []byte) (distribution.Manifest, error) {
 	var versioned manifest.Versioned
@@ -51,45 +39,4 @@ func deserializeManifest(data []byte) (distribution.Manifest, error) {
 	}
 
 	return nil, fmt.Errorf("unrecognized manifest schema version %d", versioned.SchemaVersion)
-}
-
-func (m *manifestData) path() string {
-	return filepath.Join("blobs", m.digest.scopedPath(), "data")
-}
-
-func (m *manifestData) load(blobs blobsData) error {
-	logrus.Println("MANIFEST:", m.path(), ": loading...")
-
-	data, err := currentStorage.Read(m.path(), blobs.etag(m.digest))
-	if err != nil {
-		return err
-	}
-
-	manifest, err := deserializeManifest(data)
-	if err != nil {
-		return err
-	}
-
-	for _, reference := range manifest.References() {
-		digest, err := newDigestFromReference([]byte(reference.Digest))
-		if err != nil {
-			return err
-		}
-		m.layers = append(m.layers, digest)
-	}
-	return nil
-}
-
-func (m *manifestData) ensureLoaded(blobs blobsData) error {
-	if !m.loaded {
-		m.loadLock.Lock()
-		defer m.loadLock.Unlock()
-
-		if !m.loaded {
-			m.loadErr = m.load(blobs)
-			m.loaded = true
-		}
-	}
-
-	return m.loadErr
 }
