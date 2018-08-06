@@ -16,7 +16,7 @@ func (f *fsStorage) fullPath(path string) string {
 }
 
 func (f *fsStorage) backupPath(path string) string {
-	return filepath.Join(f.RootDirectory, "docker_backup", "registry", "v2", path)
+	return filepath.Join(f.RootDirectory, "docker-backup", "registry", "v2", path)
 }
 
 func (f *fsStorage) Walk(rootDir string, baseDir string, fn walkFunc) error {
