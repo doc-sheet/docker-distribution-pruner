@@ -14,7 +14,7 @@ const digestReferenceAlgorithm = "sha256:"
 
 var digestEmpty [sha256.Size]byte
 
-const digestReferenceSize = int64(len(digestReferenceAlgorithm) + sha256.Size*2)
+const DigestReferenceSize = int64(len(digestReferenceAlgorithm) + sha256.Size*2)
 
 type Digest struct {
 	hash [sha256.Size]byte

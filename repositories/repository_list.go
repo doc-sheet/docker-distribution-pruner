@@ -1,4 +1,4 @@
-package main
+package repositories
 
 import (
 	"fmt"
@@ -10,11 +10,11 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-type repositoriesData map[string]*repositoryData
+type repositoriesData map[string]*Repository
 
 var repositoriesLock sync.Mutex
 
-func (r repositoriesData) get(path []string) *repositoryData {
+func (r repositoriesData) get(path []string) *Repository {
 	repositoryName := strings.Join(path, "/")
 
 	repositoriesLock.Lock()
@@ -95,7 +95,7 @@ func (r repositoriesData) walk(parallel bool) error {
 	return jg.finish()
 }
 
-func (r repositoriesData) markRepository(jg *jobGroup, blobs blobsData, repository *repositoryData) {
+func (r repositoriesData) markRepository(jg *jobGroup, blobs blobsData, repository *Repository) {
 	jg.dispatch(func() error {
 		return repository.mark(blobs)
 	})
@@ -115,7 +115,7 @@ func (r repositoriesData) mark(blobs blobsData) error {
 	return nil
 }
 
-func (r repositoriesData) sweepRepository(jg *jobGroup, repository *repositoryData) {
+func (r repositoriesData) sweepRepository(jg *jobGroup, repository *Repository) {
 	jg.dispatch(func() error {
 		return repository.sweep()
 	})

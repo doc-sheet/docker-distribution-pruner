@@ -7,23 +7,23 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-type tagData struct {
-	repository *repositoryData
+type Tag struct {
+	repository *Repository
 	name       string
 	current    digest
 	versions   []digest
 	lock       sync.Mutex
 }
 
-func (t *tagData) currentLinkPath() string {
+func (t *Tag) currentLinkPath() string {
 	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "current", "link")
 }
 
-func (t *tagData) versionLinkPath(version digest) string {
+func (t *Tag) versionLinkPath(version digest) string {
 	return filepath.Join("repositories", t.repository.name, "_manifests", "tags", t.name, "index", version.path(), "link")
 }
 
-func (t *tagData) mark(blobs blobsData) error {
+func (t *Tag) mark(blobs blobsData) error {
 	if t.current.valid() {
 		t.repository.markManifest(t.current)
 	}
@@ -43,7 +43,7 @@ func (t *tagData) mark(blobs blobsData) error {
 	return nil
 }
 
-func (t *tagData) sweep() error {
+func (t *Tag) sweep() error {
 	if !t.current.valid() {
 		err := deleteFile(t.currentLinkPath(), digestReferenceSize)
 		if err != nil {
@@ -66,7 +66,7 @@ func (t *tagData) sweep() error {
 	return nil
 }
 
-func (t *tagData) setCurrent(info FileInfo) error {
+func (t *Tag) setCurrent(info FileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/current/link
 
 	link, err := readLink(t.currentLinkPath(), info.etag)
@@ -79,7 +79,7 @@ func (t *tagData) setCurrent(info FileInfo) error {
 	return nil
 }
 
-func (t *tagData) addVersion(args []string, info FileInfo) error {
+func (t *Tag) addVersion(args []string, info FileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/index/sha256/af8338145978acd626bfb9e863fa446bebfc9f2660bee1af99ed29efc48d73b4/link
 
 	link, err := analyzeLink(args)

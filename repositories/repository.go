@@ -1,4 +1,4 @@
-package main
+package repositories
 
 import (
 	"fmt"
@@ -11,39 +11,43 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
-type repositoryData struct {
-	name               string
-	layers             map[digest]int
-	manifests          map[digest]int
-	manifestSignatures map[digest][]digest
-	tags               map[string]*tagData
-	uploads            []string
-	lock               sync.Mutex
+type Repository struct {
+	Name               string
+	Layers             map[digest]int
+	Manifests          map[digest]int
+	ManifestSignatures map[digest][]digest
+	Tags               map[string]*Tag
+	Uploads            []string
+	Lock               sync.Mutex
 }
 
-func (r *repositoryData) layerLinkPath(layer digest) string {
+func (r *Repository) Path() string {
+	return filepath.Join("repositories", r.Name)
+}
+
+func (r *Repository) layerLinkPath(layer digest) string {
 	return filepath.Join("repositories", r.name, "_layers", layer.path(), "link")
 }
 
-func (r *repositoryData) manifestRevisionPath(revision digest) string {
+func (r *Repository) manifestRevisionPath(revision digest) string {
 	return filepath.Join("repositories", r.name, "_manifests", "revisions", revision.path(), "link")
 }
 
-func (r *repositoryData) manifestRevisionSignaturePath(revision, signature digest) string {
+func (r *Repository) manifestRevisionSignaturePath(revision, signature digest) string {
 	return filepath.Join("repositories", r.name, "_manifests", "revisions", revision.path(), "signatures", signature.path(), "link")
 }
 
-func (r *repositoryData) uploadPath(upload string) string {
+func (r *Repository) uploadPath(upload string) string {
 	return filepath.Join("repositories", r.name, "_uploads", upload, "link")
 }
 
-func (r *repositoryData) tag(name string) *tagData {
+func (r *Repository) tag(name string) *Tag {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	t := r.tags[name]
 	if t == nil {
-		t = &tagData{
+		t = &Tag{
 			repository: r,
 			name:       name,
 		}
@@ -53,7 +57,7 @@ func (r *repositoryData) tag(name string) *tagData {
 	return t
 }
 
-func (r *repositoryData) markManifest(revision digest) error {
+func (r *Repository) markManifest(revision digest) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -61,7 +65,7 @@ func (r *repositoryData) markManifest(revision digest) error {
 	return nil
 }
 
-func (r *repositoryData) markManifestLayers(blobs blobsData, revision digest) error {
+func (r *Repository) markManifestLayers(blobs blobsData, revision digest) error {
 	err := blobs.mark(revision)
 	if err != nil {
 		return err
@@ -87,7 +91,7 @@ func (r *repositoryData) markManifestLayers(blobs blobsData, revision digest) er
 	return nil
 }
 
-func (r *repositoryData) markManifestSignatures(blobs blobsData, revision digest, signatures []digest) error {
+func (r *Repository) markManifestSignatures(blobs blobsData, revision digest, signatures []digest) error {
 	if r.manifests[revision] == 0 {
 		return nil
 	}
@@ -98,7 +102,7 @@ func (r *repositoryData) markManifestSignatures(blobs blobsData, revision digest
 	return nil
 }
 
-func (r *repositoryData) sweepManifestSignatures(revision digest, signatures []digest) error {
+func (r *Repository) sweepManifestSignatures(revision digest, signatures []digest) error {
 	if r.manifests[revision] > 0 {
 		return nil
 	}
@@ -112,11 +116,11 @@ func (r *repositoryData) sweepManifestSignatures(revision digest, signatures []d
 	return nil
 }
 
-func (r *repositoryData) markLayer(blobs blobsData, revision digest) error {
+func (r *Repository) markLayer(blobs blobsData, revision digest) error {
 	return blobs.mark(revision)
 }
 
-func (r *repositoryData) mark(blobs blobsData) error {
+func (r *Repository) mark(blobs blobsData) error {
 	for name, t := range r.tags {
 		err := t.mark(blobs)
 		if err != nil {
@@ -171,7 +175,7 @@ func (r *repositoryData) mark(blobs blobsData) error {
 	return nil
 }
 
-func (r *repositoryData) sweep() error {
+func (r *Repository) sweep() error {
 	for name, t := range r.tags {
 		err := t.sweep()
 		if err != nil {
@@ -227,7 +231,7 @@ func (r *repositoryData) sweep() error {
 	return nil
 }
 
-func (r *repositoryData) addLayer(args []string, info FileInfo) error {
+func (r *Repository) addLayer(args []string, info FileInfo) error {
 	// /test/_layers/sha256/579c7fc9b0d60a19706cd6c1573fec9a28fa758bfe1ece86a1e5c68ad6f4e9d1/link
 	link, err := analyzeLink(args)
 	if err != nil {
@@ -246,7 +250,7 @@ func (r *repositoryData) addLayer(args []string, info FileInfo) error {
 	return nil
 }
 
-func (r *repositoryData) addManifestRevision(args []string, info FileInfo) error {
+func (r *Repository) addManifestRevision(args []string, info FileInfo) error {
 	// /test2/_manifests/revisions/sha256/708519982eae159899e908639f5fa22d23d247ad923f6e6ad6128894c5d497a0/link
 	link, err := analyzeLink(args)
 	if err == nil {
@@ -278,7 +282,7 @@ func (r *repositoryData) addManifestRevision(args []string, info FileInfo) error
 	return err
 }
 
-func (r *repositoryData) addTag(args []string, info FileInfo) error {
+func (r *Repository) addTag(args []string, info FileInfo) error {
 	//INFO[0000] /test2/_manifests/tags/latest/current/link
 	//INFO[0000] /test2/_manifests/tags/latest/index/sha256/af8338145978acd626bfb9e863fa446bebfc9f2660bee1af99ed29efc48d73b4/link
 
@@ -292,7 +296,7 @@ func (r *repositoryData) addTag(args []string, info FileInfo) error {
 	}
 }
 
-func (r *repositoryData) addManifest(args []string, info FileInfo) error {
+func (r *Repository) addManifest(args []string, info FileInfo) error {
 	//INFO[0000] /test2/_manifests/revisions/sha256/708519982eae159899e908639f5fa22d23d247ad923f6e6ad6128894c5d497a0/link
 	//INFO[0000] /test2/_manifests/revisions/sha256/af8338145978acd626bfb9e863fa446bebfc9f2660bee1af99ed29efc48d73b4/link
 	//INFO[0000] /test2/_manifests/tags/latest/current/link
@@ -309,7 +313,7 @@ func (r *repositoryData) addManifest(args []string, info FileInfo) error {
 	}
 }
 
-func (r *repositoryData) addUpload(args []string, info FileInfo) error {
+func (r *Repository) addUpload(args []string, info FileInfo) error {
 	// /test/_uploads/f82d2b61-f130-4be5-b4f6-92cb18c7cf89/startedat
 	// /test/_uploads/f82d2b61-f130-4be5-b4f6-92cb18c7cf89/hashstates/sha256/0
 	if len(args) < 1 {
@@ -323,7 +327,7 @@ func (r *repositoryData) addUpload(args []string, info FileInfo) error {
 	return nil
 }
 
-func (r *repositoryData) info(blobs blobsData, stream io.WriteCloser) {
+func (r *Repository) info(blobs blobsData, stream io.WriteCloser) {
 	var layersUsed, layersUnused int
 	var manifestsUsed, manifestsUnused int
 	var tagsVersions int
@@ -367,12 +371,12 @@ func (r *repositoryData) info(blobs blobsData, stream io.WriteCloser) {
 	}
 }
 
-func newRepositoryData(name string) *repositoryData {
-	return &repositoryData{
+func newRepositoryData(name string) *Repository {
+	return &Repository{
 		name:               name,
 		layers:             make(map[digest]int),
 		manifests:          make(map[digest]int),
 		manifestSignatures: make(map[digest][]digest),
-		tags:               make(map[string]*tagData),
+		tags:               make(map[string]*Tag),
 	}
 }

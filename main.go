@@ -47,7 +47,7 @@ func main() {
 	}
 
 	blobs := make(blobsData)
-	repositories := make(repositoriesData)
+	repositories := make(Repository)
 
 	jobsRunner.run(*jobs)
 	parallelWalkRunner.run(*parallelWalkJobs)
