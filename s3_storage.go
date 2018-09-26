@@ -273,7 +273,7 @@ func newS3Storage(config *distributionStorageS3) (storageObject, error) {
 
 	storage := &s3Storage{
 		distributionStorageS3: config,
-		S3: s3.New(sess, awsConfig),
+		S3:                    s3.New(sess, awsConfig),
 	}
 	return storage, err
 }

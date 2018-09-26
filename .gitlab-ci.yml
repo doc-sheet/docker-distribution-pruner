@@ -3,6 +3,11 @@ image: golang:alpine
 stages:
     - build
 
+static-analysis:
+    stage: build
+    script:
+        - _support/go-fmt-check.sh
+
 compile:
     stage: build
     script:
