@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	multierror "github.com/hashicorp/go-multierror"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/dustin/go-humanize"
 )
@@ -75,16 +77,17 @@ func (r *repositoryData) markManifestLayers(blobs blobsData, revision digest) er
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	var resultErr error
 	for _, layer := range manifest.layers {
 		_, ok := r.layers[layer]
 		if !ok {
-			return fmt.Errorf("layer %s not found reference from manifest %s", layer, revision)
+			resultErr = multierror.Append(resultErr, fmt.Errorf("layer %s not found reference from manifest %s", layer, revision))
 		}
 
 		r.layers[layer]++
 	}
 
-	return nil
+	return resultErr
 }
 
 func (r *repositoryData) markManifestSignatures(blobs blobsData, revision digest, signatures []digest) error {
