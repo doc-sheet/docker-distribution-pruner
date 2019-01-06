@@ -1,25 +1,32 @@
 image: golang:alpine
 
 stages:
-    - build
+  - test
+  - release
+  
+before_script:
+  - apk --no-cache add git
+  - mkdir -p /go/src/gitlab.com/gitlab-org
+  - ln -s `pwd` /go/src/gitlab.com/gitlab-org/docker-distribution-pruner
+  - cd /go/src/gitlab.com/gitlab-org/docker-distribution-pruner
+  - export GOARCH=amd64
+  - export CGO_ENABLED=0
+  - export GOOS=linux
 
 static-analysis:
-    stage: build
-    script:
-        - _support/go-fmt-check.sh
+  stage: test
+  script:
+    - _support/go-fmt-check.sh
 
-compile:
-    stage: build
-    script:
-        - apk --no-cache add git
-        - mkdir -p /go/src/gitlab.com/gitlab-org
-        - ln -s `pwd` /go/src/gitlab.com/gitlab-org/docker-distribution-pruner
-        - cd /go/src/gitlab.com/gitlab-org/docker-distribution-pruner
-        - export GOARCH=amd64
-        - export CGO_ENABLED=0
-        - GOOS=linux go get
-        - GOOS=linux go build -ldflags "-s -w"
-        - chmod +x docker-distribution-pruner
-    artifacts:
-        paths:
-            - docker-distribution-pruner
+unit tests:
+  stage: test
+  script:
+    - go test -v ./...
+
+binary:
+  stage: release
+  script:
+    - go build -ldflags "-s -w"
+  artifacts:
+    paths:
+      - docker-distribution-pruner
