@@ -10,6 +10,16 @@ It uses optimised file accesses and API calls to create walk DAG.
 
 ## Installation
 
+#### 1. Use precompiled binary (for amd64)
+
+You can download latest **stable** version of the application by downloading **binary artifact** for
+[latest tag version](https://gitlab.com/gitlab-org/gitlab-ce/pipelines?scope=tags).
+
+You can also download latest development version of the application by downloading **binary artifact** from
+[master branch](https://gitlab.com/gitlab-org/docker-distribution-pruner/pipelines?scope=branches).
+
+#### 2. Compile from Source
+
 ```bash
 $ go get -u gitlab.com/gitlab-org/docker-distribution-pruner
 ```
@@ -127,7 +137,11 @@ Usage of docker-distribution-pruner:
 
 ## Contributing
 
-Read [contributing](CONTRIBUTING.md) guidelines.
+Contributions are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+
+## Release process
+
+The description of release process of Docker Distribution Pruner project can be found in the [RELEASE_PROCESS.md](RELEASE_PROCESS.md) documentation.
 
 ## License
 
