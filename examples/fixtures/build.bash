@@ -4,21 +4,26 @@ set -xeo pipefail
 
 cd "$(dirname "$0")"
 
-REPO=192.168.65.1:5000
+IP_ADDR="$(hostname -I | cut -d' ' -f1)"
+REPO="${REPO:-$IP_ADDR:5000}"
 
 build_and_push() {
-    date > file2
-    docker build -t "$REPO/$1" .
+    docker build -q --target "$2" -t "$REPO/$1" .
     docker push "$REPO/$1"
 }
 
-tag_and_push() {
-    docker tag "$REPO/$1" "$REPO/$2"
-    docker push "$REPO/$2"
-}
+# rebuild `image-A` and `B` and `AB`
+# latest has 3 revisions
+build_and_push "image:latest" "A"
+build_and_push "image:latest" "B"
+build_and_push "image:latest" "AB"
 
-build_and_push "test:latest"
-build_and_push "test:latest"
-tag_and_push "test:latest" "test2:latest"
-build_and_push "test:latest"
-tag_and_push "test:latest" "test2:latest2"
+# lets build specifically `A`
+build_and_push "image:A" "A"
+build_and_push "image:latest" "A"
+
+# lets replace latest with `A`
+build_and_push "image:latest" "AB"
+
+# redundant stays
+# B
