@@ -90,7 +90,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		err = repositories.walk(*parallelRepositoryWalk)
+		err := repositories.walk(*parallelRepositoryWalk)
 		if err != nil {
 			logErrorln(err)
 		}
@@ -103,7 +103,7 @@ func main() {
 			return
 		}
 
-		err = blobs.walk(*parallelBlobWalk)
+		err := blobs.walk(*parallelBlobWalk)
 		if err != nil {
 			logErrorln(err)
 		}
