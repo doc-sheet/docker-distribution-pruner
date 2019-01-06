@@ -19,6 +19,9 @@ You can also download latest development version of the application by downloadi
 
 #### 2. Compile from Source
 
+This compiles latest development version of the application.
+Consider using **stable** version.
+
 ```bash
 $ go get -u gitlab.com/gitlab-org/docker-distribution-pruner
 ```
