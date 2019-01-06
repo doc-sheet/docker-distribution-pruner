@@ -25,8 +25,8 @@ If put in terminal steps:
 ```bash
 # Create stable branch
 git checkout -b 0-1-stable master
-editor CHANGELOG.md
-git add CHANGELOG.md VERSION
+editor CHANGELOG
+git add CHANGELOG VERSION
 git commit -m "Update CHANGELOG for 0.1.0"
 git tag -a v0.1.0 -m "Version 0.1.0"
 git push origin 0-1-stable v0.1.0

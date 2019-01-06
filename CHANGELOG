@@ -1,2 +1,3 @@
 v 0.1.0
 - The first release
+- All features are experimental, use `EXPERIMENTAL=true` to enable them
