@@ -33,7 +33,7 @@ git push origin 0-1-stable v0.1.0
 
 # Update development
 git checkout master
-git merge 0-1-stable
+git merge --no-ff 0-1-stable
 editor VERSION # point to next version, like `0.2.0`
 git commit -m "Update VERSION to 0.2.0"
 git push origin master
