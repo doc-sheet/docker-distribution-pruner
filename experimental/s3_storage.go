@@ -1,4 +1,4 @@
-package main
+package experimental
 
 import (
 	"flag"
@@ -264,11 +264,11 @@ func newS3Storage(config *distributionStorageS3) (storageObject, error) {
 	awsConfig := aws.NewConfig()
 	awsConfig.Endpoint = config.RegionEndpoint
 	awsConfig.Region = config.Region
-	
+
 	if config.AccessKey != "" && config.SecretKey != "" {
 		awsConfig.Credentials = credentials.NewStaticCredentials(config.AccessKey, config.SecretKey, "")
 	}
-	
+
 	sess, err := session.NewSession()
 	if err != nil {
 		return nil, err
@@ -276,7 +276,7 @@ func newS3Storage(config *distributionStorageS3) (storageObject, error) {
 
 	storage := &s3Storage{
 		distributionStorageS3: config,
-		S3:                    s3.New(sess, awsConfig),
+		S3: s3.New(sess, awsConfig),
 	}
 	return storage, err
 }

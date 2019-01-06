@@ -1,5 +1,5 @@
 #!/bin/sh
-FILES=`find . -type f -name '\*.go' -maxdepth 1 -exec gofmt -l -s '{}' +`
+FILES=`find cmds/ experimental/ -type f -name '\*.go' -exec gofmt -l -s '{}' +`
 if [ -z $FILES ]
 then
     exit 0

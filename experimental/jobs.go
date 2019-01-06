@@ -1,4 +1,4 @@
-package main
+package experimental
 
 type jobsData chan func()
 

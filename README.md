@@ -1,12 +1,11 @@
-# Docker Distribution Pruner (highly experimental)
+# Docker Distribution Pruner (alpha)
 
 Go to Docker Distribution: https://github.com/docker/distribution/.
 
-Highly efficient Garbage Collector to clean all old revisions from Docker Distribution based registry (also GitLab Container Registry).
+Highly efficient Garbage Collector to clean all old revisions
+from Docker Distribution based registry (also GitLab Container Registry).
 
 It uses optimised file accesses and API calls to create walk DAG.
-
-**It is only for testing purposes now. Do not yet use that for production data.**
 
 ## Installation
 
@@ -29,34 +28,45 @@ $ go get -u gitlab.com/gitlab-org/docker-distribution-pruner
 This tool watches Docker Distribution storage and tries to recycle unreferenced version of tags, unreferenced manifests,
 unreferenced layers and thus blobs, effectively recycling used container registry storage.
 
-By default it runs in dry run mode (no changes). When run with `-delete` it will soft delete all data by moving them to
-`docker-backup` folder. In case of any problems you can move data back and restore previous state of registry.
+There are two modes of operation:
 
-If you run `-delete -soft-delete=false` you will remove data forever.
+1. Regular: implements minimal set of features that are considered stable,
+2. Experimental: implements an extended set of features that are considered obsolete, subject to break, and be removed.
 
-## Run
+## Regular (non-experimental)
+
+Not yet implemented.
+
+## Experimental mode
+
+**It is only for testing purposes now. Do not yet use that for production data.**
+
+Currently all features are considered experimental. They are intentionally disabled, not well tested,
+but can be still run as long as you run application `EXPERIMENTAL=true`.
+
+### Run
 
 Dry run:
 
 ```bash
-$ docker-distribution-pruner -config=/path/to/registry/configuration
+$ EXPERIMENTAL=true docker-distribution-pruner -config=/path/to/registry/configuration
 ```
 
 Reclaim disk space:
 
 ```bash
-$ docker-distribution-pruner -config=/path/to/registry/configuration -delete
+$ EXPERIMENTAL=true docker-distribution-pruner -config=/path/to/registry/configuration -delete
 ```
 
-## GitLab Omnibus
+### GitLab Omnibus
 
 Run:
 
 ```bash
-$ docker-distribution-pruner -config=/var/opt/gitlab/registry/config.yml
+$ EXPERIMENTAL=true docker-distribution-pruner -config=/var/opt/gitlab/registry/config.yml
 ```
 
-## S3 effectiveness
+### S3 effectiveness
 
 We do not download individual objects, instead do global wide list API call, returning 1000 objects at single time.
 We use ETag and name of files to ensure consistency of repository instead of reading files where it is possible to save 
@@ -67,7 +77,7 @@ Instead, when S3 is used the downloaded data are stored by default in `tmp-cache
 To ensure the data consistency we verify ETag (md5 of the object content).
 For large repositories it allows to save hundreds of thousands requests and also with fast SSD drive it makes it crazy fast.
 
-## Large registries
+### Large registries
 
 This tool can effectively run on registries that consists of million objects and terrabytes of data in reasonable time.
 To ensure smooth run ensure to have at least 4GB for 5 million objects stored in registry.
@@ -75,7 +85,7 @@ To ensure smooth run ensure to have at least 4GB for 5 million objects stored in
 To speed-up processing of large repositories enable parallel blobs and repository processing:
 
 ```bash
-$ docker-distribution-pruner -config=/path/to/registry/configuration -parallel-repository-walk -parallel-blob-walk
+$ EXPERIMENTAL=true docker-distribution-pruner -config=/path/to/registry/configuration -parallel-repository-walk -parallel-blob-walk
 ```
 
 You can also tune performance settings (less or more):
@@ -84,9 +94,16 @@ You can also tune performance settings (less or more):
 -jobs=100 -parallel-walk-jobs=100
 ```
 
-## Report
+### Report
 
 After success run application generates number of data, lke a list of repositories with detailed usage.
+
+### Safety
+
+By default it runs in dry run mode (no changes). When run with `-delete` it will soft delete all data by moving them to
+`docker-backup` folder. In case of any problems you can move data back and restore previous state of registry.
+
+If you run `-delete -soft-delete=false` you will remove data forever.
 
 ## Warranty
 

@@ -1,4 +1,4 @@
-package main
+package experimental
 
 import (
 	"flag"
@@ -44,7 +44,7 @@ func logErrorln(args ...interface{}) {
 	}
 }
 
-func main() {
+func Main() {
 	flag.Parse()
 
 	if *debug {
