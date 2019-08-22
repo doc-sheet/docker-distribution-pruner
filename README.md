@@ -12,7 +12,7 @@ It uses optimised file accesses and API calls to create walk DAG.
 #### 1. Use precompiled binary (for amd64)
 
 You can download latest **stable** version of the application by downloading **binary artifact** for
-[latest tag version](https://gitlab.com/gitlab-org/gitlab-ce/pipelines?scope=tags).
+[latest tag version](https://gitlab.com/gitlab-org/docker-distribution-pruner/pipelines?scope=tags).
 
 You can also download latest development version of the application by downloading **binary artifact** from
 [master branch](https://gitlab.com/gitlab-org/docker-distribution-pruner/pipelines?scope=branches).
