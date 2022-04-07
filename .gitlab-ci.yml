@@ -1,9 +1,12 @@
-image: golang:alpine
+image: golang:${GO_VERSION}-alpine
+
+variables:
+  GO_VERSION: "1.17"
 
 stages:
   - test
   - release
-  
+
 before_script:
   - apk --no-cache add git
   - mkdir -p /go/src/gitlab.com/gitlab-org
@@ -26,7 +29,10 @@ unit tests:
 binary:
   stage: release
   script:
-    - go build -ldflags "-s -w" ./cmds/docker-distribution-pruner 
+    - go build -ldflags "-s -w" ./cmds/docker-distribution-pruner
   artifacts:
     paths:
       - docker-distribution-pruner
+  parallel:
+    matrix:
+      - GO_VERSION: [ "1.16", "1.17", "1.18" ]
