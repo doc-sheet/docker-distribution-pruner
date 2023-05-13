@@ -1,0 +1,40 @@
+---
+name: build
+'on':
+  push:
+    branches:
+      - 'main'
+      - 'release/*'
+    tags:
+      - 'v*'
+  pull_request:
+
+env:
+  GOARCH: amd64
+  CGO_ENABLED: 0
+  GOOS: linux
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.17", "1.18", "1.19"]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Build
+        run: go build -ldflags "-s -w" ./cmds/docker-distribution-pruner
+
+      - name: Test
+        run: go test ./...
+
+      - name: static-analysis
+        run: _support/go-fmt-check.sh
