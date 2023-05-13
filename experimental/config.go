@@ -15,6 +15,8 @@ type distributionStorageS3 struct {
 	AccessKey      string  `yaml:"accesskey"`
 	SecretKey      string  `yaml:"secretkey"`
 	Bucket         string  `yaml:"bucket"`
+	DisableSSL     *bool   `yaml:"disablessl,omitempty"`
+	ForcePathStyle *bool   `yaml:"forcepathstyle,omitempty"`
 	Region         *string `yaml:"region"`
 	RegionEndpoint *string `yaml:"regionendpoint"`
 	RootDirectory  string  `yaml:"rootdirectory"`

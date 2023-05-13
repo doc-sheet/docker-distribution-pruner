@@ -2,6 +2,8 @@ module gitlab.com/gitlab-org/docker-distribution-pruner
 
 go 1.19
 
+replace gitlab.com/gitlab-org/docker-distribution-pruner/experimental => ./experimental
+
 require (
 	github.com/aws/aws-sdk-go v1.45.11
 	github.com/docker/distribution v2.8.2+incompatible
