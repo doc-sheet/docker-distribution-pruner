@@ -3,7 +3,7 @@ module gitlab.com/gitlab-org/docker-distribution-pruner
 go 1.16
 
 require (
-	github.com/Sirupsen/logrus v0.8.7
+	github.com/sirupsen/logrus v0.8.7
 	github.com/aws/aws-sdk-go v1.34.0
 	github.com/docker/distribution v2.6.0-rc.1.0.20170321171425-0700fa570d7b+incompatible
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect

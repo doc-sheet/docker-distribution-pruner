@@ -1,5 +1,5 @@
-github.com/Sirupsen/logrus v0.8.7 h1:hGa+d4KZNNNDmzAj6vlkeOQsgjrh8zg4EXB81mWoTm4=
-github.com/Sirupsen/logrus v0.8.7/go.mod h1:rmk17hk6i8ZSAJkSDa7nOxamrG+SP4P0mm+DAvExv4U=
+github.com/sirupsen/logrus v0.8.7 h1:eQCwjvOfZ+1tNxGP/CpSRpThigJHY7cQufSQKZavlec=
+github.com/sirupsen/logrus v0.8.7/go.mod h1:pMByvHTf9Beacp5x1UXfOR9xyW/9antXMhjMPG0dEzc=
 github.com/aws/aws-sdk-go v1.34.0 h1:brux2dRrlwCF5JhTL7MUT3WUwo9zfDHZZp3+g3Mvlmo=
 github.com/aws/aws-sdk-go v1.34.0/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
