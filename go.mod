@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.34.0
 	github.com/docker/distribution v2.6.0-rc.1.0.20170321171425-0700fa570d7b+incompatible
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
-	github.com/dustin/go-humanize v0.0.0-20151125214831-8929fe90cee4
+	github.com/dustin/go-humanize v1.0.1
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
