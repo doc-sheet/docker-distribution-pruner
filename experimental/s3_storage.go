@@ -264,6 +264,9 @@ func newS3Storage(config *distributionStorageS3) (storageObject, error) {
 	awsConfig := aws.NewConfig()
 	awsConfig.Endpoint = config.RegionEndpoint
 	awsConfig.Region = config.Region
+	awsConfig.DisableSSL = aws.Bool(true)
+	awsConfig.WithS3ForcePathStyle(true)
+
 
 	if config.AccessKey != "" && config.SecretKey != "" {
 		awsConfig.Credentials = credentials.NewStaticCredentials(config.AccessKey, config.SecretKey, "")
