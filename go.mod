@@ -3,7 +3,7 @@ module gitlab.com/gitlab-org/docker-distribution-pruner
 go 1.16
 
 require (
-	github.com/aws/aws-sdk-go v1.44.266
+	github.com/aws/aws-sdk-go v1.44.275
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/dustin/go-humanize v1.0.1
