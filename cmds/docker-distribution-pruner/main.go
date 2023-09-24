@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"gitlab.com/gitlab-org/docker-distribution-pruner/experimental"
+	"github.com/doc-sheet/docker-distribution-pruner/experimental"
 )
 
 func main() {
