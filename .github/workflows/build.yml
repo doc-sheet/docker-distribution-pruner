@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ["1.17", "1.18", "1.19"]
+        go: ["1.19", "1.20", "1.21"]
 
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           go-version: ${{ matrix.go }}
 
       - name: Build
-        run: go build -ldflags "-s -w" ./cmds/docker-distribution-pruner
+        run: go build -v -ldflags "-s -w" ./cmds/docker-distribution-pruner
 
       - name: Test
         run: go test ./...
