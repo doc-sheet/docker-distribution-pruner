@@ -3,7 +3,7 @@ module github.com/doc-sheet/docker-distribution-pruner
 go 1.19
 
 require (
-	github.com/aws/aws-sdk-go v1.53.5
+	github.com/aws/aws-sdk-go v1.54.15
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/hashicorp/go-multierror v1.1.1
