@@ -1,3 +1,7 @@
+v0.3.1
+
+- Bump golang.org/x/net dependency
+
 v0.3.0
 
 - Require Go 1.22
