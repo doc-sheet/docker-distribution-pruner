@@ -1,3 +1,7 @@
+v0.3.0
+
+- Require Go 1.22
+
 v0.2.0
 
 - Use go mod for dependencies
