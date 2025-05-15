@@ -1,6 +1,6 @@
 module github.com/doc-sheet/docker-distribution-pruner
 
-go 1.22.0
+go 1.23.0
 
 toolchain go1.23.1
 
@@ -20,6 +20,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
