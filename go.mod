@@ -8,7 +8,7 @@ require (
 	github.com/Sirupsen/logrus v0.8.7
 	github.com/aws/aws-sdk-go v1.55.7
 	github.com/docker/distribution v2.6.0-rc.1.0.20170321171425-0700fa570d7b+incompatible
-	github.com/dustin/go-humanize v0.0.0-20151125214831-8929fe90cee4
+	github.com/dustin/go-humanize v1.0.1
 	github.com/hashicorp/go-multierror v1.0.0
 	gopkg.in/yaml.v2 v2.2.8
 )
